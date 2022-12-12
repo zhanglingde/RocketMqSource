@@ -1,37 +1,9 @@
-## Apache RocketMQ 
-[![Build Status](https://travis-ci.org/apache/rocketmq.svg?branch=master)](https://travis-ci.org/apache/rocketmq) [![Coverage Status](https://coveralls.io/repos/github/apache/rocketmq/badge.svg?branch=master)](https://coveralls.io/github/apache/rocketmq?branch=master)
-[![CodeCov](https://codecov.io/gh/apache/rocketmq/branch/master/graph/badge.svg)](https://codecov.io/gh/apache/rocketmq)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.apache.rocketmq/rocketmq-all/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Corg.apache.rocketmq)
-[![GitHub release](https://img.shields.io/badge/release-download-orange.svg)](https://rocketmq.apache.org/dowloading/releases)
-[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
-[![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/apache/rocketmq.svg)](http://isitmaintained.com/project/apache/rocketmq "Average time to resolve an issue")
-[![Percentage of issues still open](http://isitmaintained.com/badge/open/apache/rocketmq.svg)](http://isitmaintained.com/project/apache/rocketmq "Percentage of issues still open")
-[![Twitter Follow](https://img.shields.io/twitter/follow/ApacheRocketMQ?style=social)](https://twitter.com/intent/follow?screen_name=ApacheRocketMQ)
+# RocketMQ 学习
 
-**[Apache RocketMQ](https://rocketmq.apache.org) is a distributed messaging and streaming platform with low latency, high performance and reliability, trillion-level capacity and flexible scalability.**
+rocketmq 版本：4.9.4
 
 
-It offers a variety of features:
 
-* Messaging patterns including publish/subscribe, request/reply and streaming
-* Financial grade transactional message
-* Built-in fault tolerance and high availability configuration options base on [DLedger](https://github.com/openmessaging/openmessaging-storage-dledger)
-* Built-in message tracing capability, also support opentracing
-* Versatile big-data and streaming ecosystem integration
-* Message retroactivity by time or offset
-* Reliable FIFO and strict ordered messaging in the same queue
-* Efficient pull and push consumption model
-* Million-level message accumulation capacity in a single queue
-* Multiple messaging protocols like gRPC, MQTT, JMS and OpenMessaging
-* Flexible distributed scale-out deployment architecture
-* Lightning-fast batch message exchange system
-* Various message filter mechanics such as SQL and Tag
-* Docker images for isolated testing and cloud isolated clusters
-* Feature-rich administrative dashboard for configuration, metrics and monitoring
-* Authentication and authorization
-* Free open source connectors, for both sources and sinks
-* Lightweight real-time computing
-----------
 
 
 ## Quick Start

@@ -105,6 +105,8 @@ public class NamesrvStartup {
             System.exit(0);
         }
 
+        // 设置 ROCKETMQ_HOME 环境变量
+        namesrvConfig.setRocketmqHome("/Users/ling/software/rocketmq-all-4.9.4-bin-release");
         MixAll.properties2Object(ServerUtil.commandLine2Properties(commandLine), namesrvConfig);
 
         if (null == namesrvConfig.getRocketmqHome()) {
@@ -143,11 +145,13 @@ public class NamesrvStartup {
             System.exit(-3);
         }
 
+        // virtual-machine shutdown hook. 添加一个初始化但是并没开始的钩子线程，在关闭的时候会调用controller.shutdown();
         Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(log, (Callable<Void>) () -> {
             controller.shutdown();
             return null;
         }));
 
+        // 底层启动netty实例
         controller.start();
 
         return controller;
