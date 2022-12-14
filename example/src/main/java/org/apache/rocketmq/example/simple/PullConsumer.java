@@ -64,6 +64,7 @@ public class PullConsumer {
                 public void run() {
                     while (true) {
                         try {
+                            // 1. 一个 topic 有多个 Message Queue,拉取一个 topic 下所有的消息，遍历所有的 Message Queue
                             Set<MessageQueue> messageQueues = consumer.fetchMessageQueuesInBalance(topic);
                             if (messageQueues == null || messageQueues.isEmpty()) {
                                 Thread.sleep(1000);
@@ -72,9 +73,12 @@ public class PullConsumer {
                             PullResult pullResult = null;
                             for (MessageQueue messageQueue : messageQueues) {
                                 try {
+                                    // 2. 从一个 Message Queue 拉取消息时需要传入 offset,不断读取消息 offset 不断增长。offset 由用户维护，存储到内存、磁盘或数据库
                                     long offset = this.consumeFromOffset(messageQueue);
                                     pullResult = consumer.pull(messageQueue, "*", offset, 32);
+                                    // 3. 根据不同消息状态做不同的处理
                                     switch (pullResult.getPullStatus()) {
+                                        // 获取到消息
                                         case FOUND:
                                             List<MessageExt> msgs = pullResult.getMsgFoundList();
 
@@ -89,6 +93,7 @@ public class PullConsumer {
                                         case OFFSET_ILLEGAL:
                                             consumer.updateConsumeOffset(messageQueue, pullResult.getNextBeginOffset());
                                             break;
+                                        // 没有新消息
                                         case NO_NEW_MSG:
                                             Thread.sleep(1);
                                             consumer.updateConsumeOffset(messageQueue, pullResult.getNextBeginOffset());
