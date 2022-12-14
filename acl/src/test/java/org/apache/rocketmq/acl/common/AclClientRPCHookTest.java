@@ -48,6 +48,7 @@ public class AclClientRPCHookTest {
         requestHeader.setMaxMsgNums(32);
         requestHeader.setSysFlag(0);
         requestHeader.setCommitOffset(0L);
+        // 作用是设置Broker最长阻塞时间，默认设置是15秒，注意是Broker在没有新消息的时候才阻塞，有消息会立刻返回
         requestHeader.setSuspendTimeoutMillis(15000L);
         requestHeader.setSubVersion(0L);
         RemotingCommand testPullRemotingCommand = RemotingCommand.createRequestCommand(RequestCode.PULL_MESSAGE, requestHeader);

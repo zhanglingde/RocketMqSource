@@ -38,6 +38,7 @@ import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.protocol.body.ProcessQueueInfo;
 
 /**
+ * 在PushConsumer运行的时候，每个Message Queue都会有个对应的ProcessQueue对象，保存了这个Message Queue消息处理状态的快照
  * Queue consumption snapshot
  */
 public class ProcessQueue {
@@ -46,12 +47,18 @@ public class ProcessQueue {
     public final static long REBALANCE_LOCK_INTERVAL = Long.parseLong(System.getProperty("rocketmq.client.rebalance.lockInterval", "20000"));
     private final static long PULL_MAX_IDLE_TIME = Long.parseLong(System.getProperty("rocketmq.client.pull.pullMaxIdleTime", "120000"));
     private final InternalLogger log = ClientLogger.getLog();
+    /**
+     * 读写锁控制着多个线程对 TreeMap 对象的并发访问
+     */
     private final ReadWriteLock treeMapLock = new ReentrantReadWriteLock();
     private final TreeMap<Long, MessageExt> msgTreeMap = new TreeMap<Long, MessageExt>();
     private final AtomicLong msgCount = new AtomicLong();
     private final AtomicLong msgSize = new AtomicLong();
     private final Lock consumeLock = new ReentrantLock();
     /**
+     * key：以 Message Queue 的 offset 作为 key
+     * value：以消息内容的引用为 value
+     * 保存了所有从 MessageQueue 获取到，但是还未被处理的消息
      * A subset of msgTreeMap, will only be used when orderly consume
      */
     private final TreeMap<Long, MessageExt> consumingMsgOrderlyTreeMap = new TreeMap<Long, MessageExt>();

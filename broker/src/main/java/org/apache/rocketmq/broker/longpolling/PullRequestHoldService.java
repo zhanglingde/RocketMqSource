@@ -29,6 +29,10 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.ConsumeQueueExt;
 
+/**
+ * 服务端接到新消息请求后，如果队列里没有新消息，并不急于返回，通过一个循环不断查看状态，每次waitForRunning一段时间（默认是5秒），然后后再Check。
+ * 默认情况下当Broker一直没有新消息，第三次Check的时候，等待时间超过Request里面的Broker-SuspendMaxTimeMillis，就返回空结果
+ */
 public class PullRequestHoldService extends ServiceThread {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     protected static final String TOPIC_QUEUEID_SEPARATOR = "@";
@@ -63,18 +67,26 @@ public class PullRequestHoldService extends ServiceThread {
         return sb.toString();
     }
 
+    /**
+     * 长轮询 的核心是 Broker 端 HOLD 住客户端过来的请求一小段时间，在这个时间内有新消息到达，就利用现有的连接立刻返回消息给 Consumer
+     * “长轮询”的主动权还是掌握在Consumer手中，Broker即使有大量消息积压，也不会主动推送给Consumer
+     *
+     */
     @Override
     public void run() {
         log.info("{} service started", this.getServiceName());
+        // 通过循环不断查看状态
         while (!this.isStopped()) {
             try {
                 if (this.brokerController.getBrokerConfig().isLongPollingEnable()) {
+                    // 每次 waitForRunning 5s（默认 5s）
                     this.waitForRunning(5 * 1000);
                 } else {
                     this.waitForRunning(this.brokerController.getBrokerConfig().getShortPollingTimeMills());
                 }
 
                 long beginLockTimestamp = this.systemClock.now();
+                // 等待 5s 后 check 状态,判断是否有消息到达，有新消息调用 notifyMessageArriving 函数返回请求结果
                 this.checkHoldRequest();
                 long costTime = this.systemClock.now() - beginLockTimestamp;
                 if (costTime > 5 * 1000) {
@@ -101,6 +113,7 @@ public class PullRequestHoldService extends ServiceThread {
                 int queueId = Integer.parseInt(kArray[1]);
                 final long offset = this.brokerController.getMessageStore().getMaxOffsetInQueue(topic, queueId);
                 try {
+                    // 返回消息给 Consumer
                     this.notifyMessageArriving(topic, queueId, offset);
                 } catch (Throwable e) {
                     log.error("check hold request failed. topic={}, queueId={}", topic, queueId, e);

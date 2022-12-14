@@ -81,6 +81,7 @@ public class ConsumeMessageOrderlyService implements ConsumeMessageService {
         } else {
             consumeThreadPrefix = new StringBuilder("ConsumeMessageThread_").append(consumerGroup).append("_").toString();
         }
+        // 消费者线程池
         this.consumeExecutor = new ThreadPoolExecutor(
             this.defaultMQPushConsumer.getConsumeThreadMin(),
             this.defaultMQPushConsumer.getConsumeThreadMax(),

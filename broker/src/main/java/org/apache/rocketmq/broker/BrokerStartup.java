@@ -133,13 +133,13 @@ public class BrokerStartup {
 
             // 设置 ROCKETMQ_HOME 环境变量
             brokerConfig.setRocketmqHome("/Users/ling/software/rocketmq-all-4.9.4-bin-release");
+            brokerConfig.setNamesrvAddr("127.0.0.1:9876");
             MixAll.properties2Object(ServerUtil.commandLine2Properties(commandLine), brokerConfig);
 
             if (null == brokerConfig.getRocketmqHome()) {
                 System.out.printf("Please set the %s variable in your environment to match the location of the RocketMQ installation", MixAll.ROCKETMQ_HOME_ENV);
                 System.exit(-2);
             }
-            brokerConfig.setNamesrvAddr("127.0.0.1:9876");
 
             String namesrvAddr = brokerConfig.getNamesrvAddr();
             if (null != namesrvAddr) {
