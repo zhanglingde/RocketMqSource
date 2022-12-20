@@ -3,8 +3,15 @@
 rocketmq 版本：4.9.4
 
 
+# NameServer
 
+- NameServer 集群状态存储结构：RouteInfoManager
+- NameServer 更新主逻辑：DefaultRequestProcessor
+- Broker 心跳检查：NamesrvController#initialize
+- NameServer 和 Broker 长连接断开清理 Broker：BrokerHousekeepingService
 
+# Topic 
+- Topic 的创建：UpdateTopicSubCommand
 
 ## Quick Start
 

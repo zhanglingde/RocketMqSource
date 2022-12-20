@@ -64,6 +64,9 @@ import org.apache.rocketmq.remoting.netty.NettyRequestProcessor;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 
+/**
+ * NameServer 主逻辑：根据 Broker 的情况更新各种集群的属性数据
+ */
 public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implements NettyRequestProcessor {
     private static InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
@@ -73,9 +76,16 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
         this.namesrvController = namesrvController;
     }
 
+    /**
+     * 其他角色主动向 NameServer 上报状态，根据消息里请求码做相应处理，更新存储的对应信息
+     *
+     * @param ctx
+     * @param request
+     * @return
+     * @throws RemotingCommandException
+     */
     @Override
-    public RemotingCommand processRequest(ChannelHandlerContext ctx,
-        RemotingCommand request) throws RemotingCommandException {
+    public RemotingCommand processRequest(ChannelHandlerContext ctx, RemotingCommand request) throws RemotingCommandException {
 
         if (ctx != null) {
             log.debug("receive request, {} {} {}",

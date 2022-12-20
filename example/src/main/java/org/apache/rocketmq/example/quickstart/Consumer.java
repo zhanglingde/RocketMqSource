@@ -22,6 +22,8 @@ import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.common.consumer.ConsumeFromWhere;
 
+import java.util.HashMap;
+
 /**
  * This example shows how to subscribe and consume messages using providing {@link DefaultMQPushConsumer}.
  */

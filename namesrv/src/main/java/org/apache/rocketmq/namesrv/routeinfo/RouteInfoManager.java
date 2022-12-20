@@ -50,14 +50,40 @@ import org.apache.rocketmq.common.protocol.route.TopicRouteData;
 import org.apache.rocketmq.common.sysflag.TopicSysFlag;
 import org.apache.rocketmq.remoting.common.RemotingUtil;
 
+/**
+ * 集群状态的存储结构
+ * NameServer 集群的状态保存在该类的 5 个变量中
+ */
 public class RouteInfoManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
     private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    /**
+     * Key: 是Topic的名称，它存储了所有Topic的属性信息。
+     * Value: 是个QueueData队列，队里的长度等于这个Topic数据存储的Master Broker的个数，
+     * QueueData: 里存储着Broker的名称、读写queue的数量、同步标识等
+     */
     private final HashMap<String/* topic */, Map<String /* brokerName */ , QueueData>> topicQueueTable;
+    /**
+     * 相同名称的 broker 可能存在多台机器，一个 Master 和多个 Slave
+     * BrokerData 存储着一个 BrokerName 对应的属性信息，包括所属的 Cluster 名称，一个 Master Broker 和多个 Slave Broker 的地址信息
+     */
     private final HashMap<String/* brokerName */, BrokerData> brokerAddrTable;
+    /**
+     * 存储的是集群中Cluster的信息，结果很简单，就是一个Cluster名称对应一个由BrokerName组成的集合
+     */
     private final HashMap<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
+    /**
+     * 和 BrokerAddrTable 有关；
+     * key：brokerAddr 对应着一台机器
+     * BrokerLiveInfo：存储的内容是这台 Broker 机器的实时状态，包括上次更新的时间戳，NameServer 会定期检查这个时间戳，超时没有更新就认为这个 Broker 无效，将其从 Broker 列表里清除
+     */
     private final HashMap<String/* brokerAddr */, BrokerLiveInfo> brokerLiveTable;
+    /**
+     * RocketMQ 的一种服务端过滤方式，一个 Broker 可以有一个或多个 Filter Server
+     * key：brokerAddr
+     * value：和这个 Broker 关联的多个 Filter Server 的地址
+     */
     private final HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
 
     public RouteInfoManager() {
@@ -135,6 +161,13 @@ public class RouteInfoManager {
         return topicList;
     }
 
+    /**
+     * 接收 Broker 发送的注册信息，创建 Topic
+     * 先更新 Broker 的信息，然后对每个 Master 角色的 Broker 创建一个 QueueData 对象，
+     * 新增 Topic,就添加 QueueData 对象
+     * 修改 Topic，就把旧的 QueueData 删除，加入新的 QueueData
+     * @return
+     */
     public RegisterBrokerResult registerBroker(
             final String clusterName,
             final String brokerAddr,

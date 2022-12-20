@@ -277,6 +277,10 @@ public class MQClientAPIImpl {
 
     }
 
+    /**
+     * 创建 Topic
+     * Broker 接到创建 Topic 的请求后，执行具体的创建逻辑
+     */
     public void createTopic(final String addr, final String defaultTopic, final TopicConfig topicConfig,
         final long timeoutMillis)
         throws RemotingException, MQBrokerException, InterruptedException, MQClientException {

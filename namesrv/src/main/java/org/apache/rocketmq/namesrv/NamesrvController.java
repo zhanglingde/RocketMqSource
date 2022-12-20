@@ -83,7 +83,7 @@ public class NamesrvController {
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
 
         this.registerProcessor();
-
+        // 心跳检查，Broker 向 NameServer 发送的心跳会更新时间戳，当长时间未更新时，触发清理逻辑（每 10s 检查一次，超过 2分钟认为 Broker 已失效）
         this.scheduledExecutorService.scheduleAtFixedRate(NamesrvController.this.routeInfoManager::scanNotActiveBroker, 5, 10, TimeUnit.SECONDS);
 
         this.scheduledExecutorService.scheduleAtFixedRate(NamesrvController.this.kvConfigManager::printAllPeriodically, 1, 10, TimeUnit.MINUTES);

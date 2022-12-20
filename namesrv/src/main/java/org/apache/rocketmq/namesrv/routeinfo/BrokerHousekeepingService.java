@@ -37,6 +37,7 @@ public class BrokerHousekeepingService implements ChannelEventListener {
 
     @Override
     public void onChannelClose(String remoteAddr, Channel channel) {
+        // Channel 断开时触发回调函数，把这个 Broker 的信息清理出去
         this.namesrvController.getRouteInfoManager().onChannelDestroy(remoteAddr, channel);
     }
 

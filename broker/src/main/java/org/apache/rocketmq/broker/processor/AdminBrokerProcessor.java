@@ -142,6 +142,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.rocketmq.store.config.BrokerRole;
 
+/**
+ * Broker 处理  命令
+ */
 public class AdminBrokerProcessor extends AsyncNettyRequestProcessor implements NettyRequestProcessor {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final BrokerController brokerController;
@@ -155,6 +158,7 @@ public class AdminBrokerProcessor extends AsyncNettyRequestProcessor implements 
         RemotingCommand request) throws RemotingCommandException {
         switch (request.getCode()) {
             case RequestCode.UPDATE_AND_CREATE_TOPIC:
+                // Broker 处理 updateTopic 命令
                 return this.updateAndCreateTopic(ctx, request);
             case RequestCode.DELETE_TOPIC_IN_BROKER:
                 return this.deleteTopic(ctx, request);
@@ -278,8 +282,9 @@ public class AdminBrokerProcessor extends AsyncNettyRequestProcessor implements 
         topicConfig.setPerm(requestHeader.getPerm());
         topicConfig.setTopicSysFlag(requestHeader.getTopicSysFlag() == null ? 0 : requestHeader.getTopicSysFlag());
 
+        // 更新本地的 topicConfig
         this.brokerController.getTopicConfigManager().updateTopicConfig(topicConfig);
-
+        // 向 NameServer 发送 registerBroker 请求(向 NameServer 发送注册信息，NameServer 完成 Topic 的创建后，其他客户端才能发送新增的  Topic)
         this.brokerController.registerIncrementBrokerData(topicConfig, this.brokerController.getTopicConfigManager().getDataVersion());
 
         response.setCode(ResponseCode.SUCCESS);

@@ -46,9 +46,12 @@ public class UpdateTopicSubCommand implements SubCommand {
     public Options buildCommandlineOptions(Options options) {
         OptionGroup optionGroup = new OptionGroup();
 
+        // b 和 c 参数只有一个会起作用（-b 优先）
+        // b参数指定在哪个Broker上创建本Topic的Message Queue
         Option opt = new Option("b", "brokerAddr", true, "create topic to which broker");
         optionGroup.addOption(opt);
 
+        // c 参数表示在这个 Cluster 下面所有的 Master Broker 上创建这个 Topic 的 Message Queue，从而达到高可用性的目的
         opt = new Option("c", "clusterName", true, "create topic to which cluster");
         optionGroup.addOption(opt);
 
