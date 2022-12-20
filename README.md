@@ -13,6 +13,15 @@ rocketmq 版本：4.9.4
 # Topic 
 - Topic 的创建：UpdateTopicSubCommand
 
+
+# 底层通信
+
+- NamesrvController#remotingServer  底层通信 Netty 服务器
+- RemotingCommand：底层通信命令
+- DefaultRequestProcessor#processRequest 处理命令
+- MQClientAPIImpl#pullMessageSync：Consumer 获取消息的底层通信部分同样发送一个RemotingCommand请求，返回的response也是个RemotingCommand类型
+- 
+
 ## Quick Start
 
 This paragraph guides you through steps of installing RocketMQ in different ways.

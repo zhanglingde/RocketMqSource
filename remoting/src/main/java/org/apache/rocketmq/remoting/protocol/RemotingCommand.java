@@ -35,6 +35,20 @@ import org.apache.rocketmq.remoting.exception.RemotingCommandException;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
+
+/**
+ * 自定义消息
+ *
+ * ｜<--- 4 ---->｜<------ 4 ----->｜<------------->｜<-------------> ｜
+ *  ———————————————————————————————-----------------------------------
+ * ｜   length   ｜ header length  ｜ header data   ｜ body data      ｜
+ *  ———————————————————————————————-----------------------------------
+ *
+ *  1）第一部分是大端4个字节整数，值等于第二、三、四部分长度的总和；
+ *  2）第二部分是大端4个字节整数，值等于第三部分的长度；
+ *  3）第三部分是通过Json序列化的数据；
+ *  4）第四部分是通过应用自定义二进制序列化的数据。
+ */
 public class RemotingCommand {
     public static final String SERIALIZE_TYPE_PROPERTY = "rocketmq.serialize.type";
     public static final String SERIALIZE_TYPE_ENV = "ROCKETMQ_SERIALIZE_TYPE";
@@ -155,6 +169,7 @@ public class RemotingCommand {
 
     public static RemotingCommand decode(final ByteBuf byteBuffer) throws RemotingCommandException {
         int length = byteBuffer.readableBytes();
+        // 1. 读取第一部分 4 个字节，表示二、三、四部分长度总和
         int oriHeaderLen = byteBuffer.readInt();
         int headerLength = getHeaderLength(oriHeaderLen);
         if (headerLength > length - 4) {
@@ -163,6 +178,7 @@ public class RemotingCommand {
 
         RemotingCommand cmd = headerDecode(byteBuffer, headerLength, getProtocolType(oriHeaderLen));
 
+        // 减去 header length 和 header data 的长度表示 body data 的长度
         int bodyLength = length - 4 - headerLength;
         byte[] bodyData = null;
         if (bodyLength > 0) {
@@ -181,6 +197,7 @@ public class RemotingCommand {
     private static RemotingCommand headerDecode(ByteBuf byteBuffer, int len, SerializeType type) throws RemotingCommandException {
         switch (type) {
             case JSON:
+                // header data 使用 JSON 序列化
                 byte[] headerData = new byte[len];
                 byteBuffer.readBytes(headerData);
                 RemotingCommand resultJson = RemotingSerializable.decode(headerData, RemotingCommand.class);
