@@ -20,7 +20,33 @@ rocketmq 版本：4.9.4
 - RemotingCommand：底层通信命令
 - DefaultRequestProcessor#processRequest 处理命令
 - MQClientAPIImpl#pullMessageSync：Consumer 获取消息的底层通信部分同样发送一个RemotingCommand请求，返回的response也是个RemotingCommand类型
+
+# NameServer 源码
+- NamesrvController 初始化及启动  NamesrvController#initialize    NamesrvController#start
+- 核心业务处理逻辑：DefaultRequestProcessor#processRequest
 - 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Quick Start
 

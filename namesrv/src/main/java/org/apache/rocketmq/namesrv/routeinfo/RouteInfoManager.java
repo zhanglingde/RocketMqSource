@@ -498,6 +498,10 @@ public class RouteInfoManager {
         return null;
     }
 
+    /**
+     * 扫描失效的 Broker
+     * @return
+     */
     public int scanNotActiveBroker() {
         int removeCount = 0;
         Iterator<Entry<String, BrokerLiveInfo>> it = this.brokerLiveTable.entrySet().iterator();
