@@ -85,6 +85,12 @@ import org.apache.rocketmq.remoting.exception.RemotingException;
 import org.apache.rocketmq.remoting.netty.NettyClientConfig;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 
+/**
+ * 客户端各种类型的Consumer和Producer的底层类
+ * 首先从NameServer获取并保存各种配置信息，比如Topic的Route信息。同时MQClientInstance还会通过MQClientAPIImpl类实现消息的收发，也就是从Broker获取消息或者发送消息到Broker
+ *
+ * 普通情况下，一个Java 程序或 JVM 进程只要有一个 MQClientInstance 实例就够了；一个或多个 Consumer 或 Producer 底层使用同一个 MQClientInstance
+ */
 public class MQClientInstance {
     private final static long LOCK_TIMEOUT_MILLIS = 3000;
     private final InternalLogger log = ClientLogger.getLog();
@@ -96,6 +102,10 @@ public class MQClientInstance {
     private final ConcurrentMap<String/* group */, MQConsumerInner> consumerTable = new ConcurrentHashMap<String, MQConsumerInner>();
     private final ConcurrentMap<String/* group */, MQAdminExtInner> adminExtTable = new ConcurrentHashMap<String, MQAdminExtInner>();
     private final NettyClientConfig nettyClientConfig;
+
+    /**
+     * 负责底层消息通信
+     */
     private final MQClientAPIImpl mQClientAPIImpl;
     private final MQAdminImpl mQAdminImpl;
     private final ConcurrentMap<String/* Topic */, TopicRouteData> topicRouteTable = new ConcurrentHashMap<String, TopicRouteData>();
@@ -222,6 +232,11 @@ public class MQClientInstance {
         return mqList;
     }
 
+    /**
+     * MQClientAPIImpl对象用来负责底层消息通信，然后启动pullMessageService和rebalanceService。
+     * 在类的成员变量中，用topicRouteTable、brokerAddrTable等来存储从NameServer中获得的集群状态信息，并通过一个ScheduledTask来维护这些信息
+     * @throws MQClientException
+     */
     public void start() throws MQClientException {
 
         synchronized (this) {
@@ -253,6 +268,9 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * 获取NameServer地址、更新TopicRoute信息、清理离线的Broker和保存消费者的Offset
+     */
     private void startScheduledTask() {
         if (null == this.clientConfig.getNamesrvAddr()) {
             this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {

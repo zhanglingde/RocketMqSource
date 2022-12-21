@@ -51,6 +51,10 @@ public class ProcessQueue {
      * 读写锁控制着多个线程对 TreeMap 对象的并发访问
      */
     private final ReadWriteLock treeMapLock = new ReentrantReadWriteLock();
+    /**
+     * 保存了所有从 MessageQueue 获取到但还未被处理的消息
+     * MessageQueue 的 Offset 作为 Key
+     */
     private final TreeMap<Long, MessageExt> msgTreeMap = new TreeMap<Long, MessageExt>();
     private final AtomicLong msgCount = new AtomicLong();
     private final AtomicLong msgSize = new AtomicLong();

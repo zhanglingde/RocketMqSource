@@ -76,6 +76,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
         } else {
             consumeThreadPrefix = new StringBuilder("ConsumeMessageThread_").append(consumerGroup).append("_").toString();
         }
+        // 三个线程池，主线程用来正常执行收到的消息
         this.consumeExecutor = new ThreadPoolExecutor(
             this.defaultMQPushConsumer.getConsumeThreadMin(),
             this.defaultMQPushConsumer.getConsumeThreadMax(),
@@ -84,7 +85,9 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
             this.consumeRequestQueue,
             new ThreadFactoryImpl(consumeThreadPrefix));
 
+        // 执行推迟消费的消息
         this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl("ConsumeMessageScheduledThread_"));
+        // 定时清理超时消息（15 分钟）
         this.cleanExpireMsgExecutors = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl("CleanExpireMsgScheduledThread_"));
     }
 
@@ -195,6 +198,8 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
         final MessageQueue messageQueue,
         final boolean dispatchToConsume) {
         final int consumeBatchSize = this.defaultMQPushConsumer.getConsumeMessageBatchMaxSize();
+        // 任务分发逻辑
+        // 从 Broker 获取到一批消息以后，根据 BatchSize 的设置，把一批消息封装到一个 ConsumerRequest 中；然后提交到 consumeExecutor 线程池中执行
         if (msgs.size() <= consumeBatchSize) {
             ConsumeRequest consumeRequest = new ConsumeRequest(msgs, processQueue, messageQueue);
             try {
@@ -248,6 +253,8 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
         if (consumeRequest.getMsgs().isEmpty())
             return;
 
+        // 如果消费不成功，把消息提交到 scheduledExecutorService 线程池中，5s 后再执行；
+        // 如果消费模式是 CLUSTERING 模式，未消费成功的消息会先被发送回 Broker,供这个 ConsumerGroup 里的其他 Consumer 消费，如果发送回 Broker 失败，再调用 RECONSUME_LATER
         switch (status) {
             case CONSUME_SUCCESS:
                 if (ackIndex >= consumeRequest.getMsgs().size()) {

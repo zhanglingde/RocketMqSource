@@ -273,11 +273,14 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     }
 
     /**
+     * 最常用的构造方法
+     *
      * Constructor specifying consumer group.
      *
      * @param consumerGroup Consumer group.
      */
     public DefaultMQPushConsumer(final String consumerGroup) {
+        // 将 RPCHook 设为空，把负载均衡策略设置成平均策略
         this(null, consumerGroup, null, new AllocateMessageQueueAveragely());
     }
 
