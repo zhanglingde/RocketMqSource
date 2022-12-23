@@ -22,6 +22,10 @@ import org.apache.rocketmq.common.message.MessageQueue;
 
 /**
  * 负载均衡策略为平均策略
+ *
+ * 如果创建 Topic 的时候，把 Message Queue 数设为 3，当 Consumer 数量为 2 的时候，有一个 Consumer 需要处理 Topic 三分之二的消息，另一个处理三分之一的消息；
+ * 当 Consumer 数量为 4 的时候，有一个 Consumer 无法收到消息，其他 3 个 Consumer 各处理 Topic 三分之一的消息。
+ * 可见 Message Queue 数量设置过小不利于做负载均衡，通常情况下，应把一个 Topic 的 Message Queue 数设置为 16
  * Average Hashing queue algorithm
  */
 public class AllocateMessageQueueAveragely extends AbstractAllocateMessageQueueStrategy {
