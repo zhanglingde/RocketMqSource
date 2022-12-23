@@ -30,6 +30,11 @@ public interface RemotingServer extends RemotingService {
     void registerProcessor(final int requestCode, final NettyRequestProcessor processor,
         final ExecutorService executor);
 
+    /**
+     * 设置接收到消息后的处理方法
+     * @param processor
+     * @param executor
+     */
     void registerDefaultProcessor(final NettyRequestProcessor processor, final ExecutorService executor);
 
     int localListenPort();

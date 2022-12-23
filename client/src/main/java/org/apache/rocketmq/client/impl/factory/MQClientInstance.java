@@ -233,8 +233,8 @@ public class MQClientInstance {
     }
 
     /**
-     * MQClientAPIImpl对象用来负责底层消息通信，然后启动pullMessageService和rebalanceService。
-     * 在类的成员变量中，用topicRouteTable、brokerAddrTable等来存储从NameServer中获得的集群状态信息，并通过一个ScheduledTask来维护这些信息
+     * MQClientAPIImpl 对象用来负责底层消息通信，然后启动 pullMessageService 和 rebalanceService。
+     * 在类的成员变量中，用 topicRouteTable、brokerAddrTable 等来存储从 NameServer 中获得的集群状态信息，并通过一个 ScheduledTask 来维护这些信息
      * @throws MQClientException
      */
     public void start() throws MQClientException {
@@ -273,6 +273,7 @@ public class MQClientInstance {
      */
     private void startScheduledTask() {
         if (null == this.clientConfig.getNamesrvAddr()) {
+            // 定时获取 NameServer 地址
             this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
                 @Override
@@ -286,6 +287,7 @@ public class MQClientInstance {
             }, 1000 * 10, 1000 * 60 * 2, TimeUnit.MILLISECONDS);
         }
 
+        // 定时更新 TopicRoute 信息
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -298,6 +300,7 @@ public class MQClientInstance {
             }
         }, 10, this.clientConfig.getPollNameServerInterval(), TimeUnit.MILLISECONDS);
 
+        // 定时清理离线的Broker
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -311,6 +314,7 @@ public class MQClientInstance {
             }
         }, 1000, this.clientConfig.getHeartbeatBrokerInterval(), TimeUnit.MILLISECONDS);
 
+        // 定时保存消费者的 Offset
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override

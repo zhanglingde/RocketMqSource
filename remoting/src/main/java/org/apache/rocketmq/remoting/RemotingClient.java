@@ -27,6 +27,10 @@ import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 
 public interface RemotingClient extends RemotingService {
 
+    /**
+     * 获取有效的 NameServer 地址
+     * @param addrs
+     */
     void updateNameServerAddressList(final List<String> addrs);
 
     List<String> getNameServerAddressList();
@@ -35,10 +39,16 @@ public interface RemotingClient extends RemotingService {
         final long timeoutMillis) throws InterruptedException, RemotingConnectException,
         RemotingSendRequestException, RemotingTimeoutException;
 
+    /**
+     * 向 Server 端发送请求
+     */
     void invokeAsync(final String addr, final RemotingCommand request, final long timeoutMillis,
         final InvokeCallback invokeCallback) throws InterruptedException, RemotingConnectException,
         RemotingTooMuchRequestException, RemotingTimeoutException, RemotingSendRequestException;
 
+    /**
+     * 向 Server 端发送请求
+     */
     void invokeOneway(final String addr, final RemotingCommand request, final long timeoutMillis)
         throws InterruptedException, RemotingConnectException, RemotingTooMuchRequestException,
         RemotingTimeoutException, RemotingSendRequestException;
