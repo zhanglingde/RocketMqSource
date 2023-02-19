@@ -312,6 +312,12 @@ public class MappedFile extends ReferenceResource {
         return this.getFlushedPosition();
     }
 
+    /**
+     * 当 {@link #writeBuffer} 为 null 时，直接返回{@link #wrotePosition}
+     *
+     * @param commitLeastPages commit最小页数
+     * @return 当前commit位置
+     */
     public int commit(final int commitLeastPages) {
         if (writeBuffer == null) {
             //no need to commit data to file channel, so just regard wrotePosition as committedPosition.
@@ -327,6 +333,7 @@ public class MappedFile extends ReferenceResource {
         }
 
         // All dirty data has been committed to FileChannel.
+        // 写到文件尾时，回收writeBuffer。
         if (writeBuffer != null && this.transientStorePool != null && this.fileSize == this.committedPosition.get()) {
             this.transientStorePool.returnBuffer(writeBuffer);
             this.writeBuffer = null;
@@ -335,17 +342,24 @@ public class MappedFile extends ReferenceResource {
         return this.committedPosition.get();
     }
 
+    /**
+     * commit实现，将writeBuffer写入fileChannel。
+     * @param commitLeastPages commit最小页数。用不上该参数
+     */
     protected void commit0() {
         int writePos = this.wrotePosition.get();
         int lastCommittedPosition = this.committedPosition.get();
 
         if (writePos - lastCommittedPosition > 0) {
             try {
+                // 设置需要写入的 byteBuffer
                 ByteBuffer byteBuffer = writeBuffer.slice();
                 byteBuffer.position(lastCommittedPosition);
                 byteBuffer.limit(writePos);
+                // 写入 fileChannel
                 this.fileChannel.position(lastCommittedPosition);
                 this.fileChannel.write(byteBuffer);
+                // 设置position
                 this.committedPosition.set(writePos);
             } catch (Throwable e) {
                 log.error("Error occurred when commit data to FileChannel.", e);
@@ -353,6 +367,15 @@ public class MappedFile extends ReferenceResource {
         }
     }
 
+    /**
+     * 是否能够 flush。满足如下任意条件：
+     * 1. 映射文件已经写满
+     * 2. flushLeastPages > 0 && 未flush部分超过flushLeastPages
+     * 3. flushLeastPages = 0 && 有新写入部分
+     *
+     * @param flushLeastPages flush最小分页
+     * @return 是否能够写入
+     */
     private boolean isAbleToFlush(final int flushLeastPages) {
         int flush = this.flushedPosition.get();
         int write = getReadPosition();
@@ -368,6 +391,15 @@ public class MappedFile extends ReferenceResource {
         return write > flush;
     }
 
+    /**
+     * 是否能够 commit。满足如下条件任意条件：
+     * 1. 映射文件已经写满
+     * 2. commitLeastPages > 0 && 未commit部分超过commitLeastPages
+     * 3. commitLeastPages = 0 && 有新写入部分
+     *
+     * @param commitLeastPages commit最小分页
+     * @return 是否能够写入
+     */
     protected boolean isAbleToCommit(final int commitLeastPages) {
         int commit = this.committedPosition.get();
         int write = this.wrotePosition.get();
