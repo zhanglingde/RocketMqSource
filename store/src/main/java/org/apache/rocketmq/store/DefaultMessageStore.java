@@ -370,11 +370,13 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     private PutMessageStatus checkMessage(MessageExtBrokerInner msg) {
+        // 消息过长
         if (msg.getTopic().length() > Byte.MAX_VALUE) {
             log.warn("putMessage message topic length too long " + msg.getTopic().length());
             return PutMessageStatus.MESSAGE_ILLEGAL;
         }
 
+        // 消息附加属性过长
         if (msg.getPropertiesString() != null && msg.getPropertiesString().length() > Short.MAX_VALUE) {
             log.warn("putMessage message properties length too long " + msg.getPropertiesString().length());
             return PutMessageStatus.MESSAGE_ILLEGAL;
@@ -402,6 +404,7 @@ public class DefaultMessageStore implements MessageStore {
             return PutMessageStatus.SERVICE_NOT_AVAILABLE;
         }
 
+        // 从节点不允许写入
         if (BrokerRole.SLAVE == this.messageStoreConfig.getBrokerRole()) {
             long value = this.printTimes.getAndIncrement();
             if ((value % 50000) == 0) {
@@ -410,6 +413,7 @@ public class DefaultMessageStore implements MessageStore {
             return PutMessageStatus.SERVICE_NOT_AVAILABLE;
         }
 
+        // store是否允许写入
         if (!this.runningFlags.isWriteable()) {
             long value = this.printTimes.getAndIncrement();
             if ((value % 50000) == 0) {
