@@ -143,8 +143,19 @@ public class MixAll {
         return 0;
     }
 
+    /**
+     * 将内容写到文件
+     * 安全写
+     * 1. 写到 .tmp 文件
+     * 2. 备份准备写入文件到 .bak 文件
+     * 3. 删除原文件，将 .tmp 修改成文件
+     *
+     * @param str 内容
+     * @param fileName 文件名
+     * @throws IOException IO 异常
+     */
     public static void string2File(final String str, final String fileName) throws IOException {
-
+        // 写到 tmp 文件
         String tmpFile = fileName + ".tmp";
         string2FileNotSafe(str, tmpFile);
 
@@ -161,12 +172,21 @@ public class MixAll {
         file.renameTo(new File(fileName));
     }
 
+    /**
+     * 将内容写到文件（非安全写）
+     *
+     * @param str 内容
+     * @param fileName 文件名
+     * @throws IOException
+     */
     public static void string2FileNotSafe(final String str, final String fileName) throws IOException {
         File file = new File(fileName);
+        // 创建上级目录
         File fileParent = file.getParentFile();
         if (fileParent != null) {
             fileParent.mkdirs();
         }
+        // 写内容
         FileWriter fileWriter = null;
 
         try {

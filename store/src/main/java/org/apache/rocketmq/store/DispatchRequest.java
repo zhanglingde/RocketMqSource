@@ -20,11 +20,17 @@ import java.util.Map;
 
 public class DispatchRequest {
     private final String topic;
+    // 队列编号
     private final int queueId;
+    // commitLog 存储位置
     private final long commitLogOffset;
+    // 消息长度
     private int msgSize;
+    // 消息 tagsCode
     private final long tagsCode;
+    // 存储时间
     private final long storeTimestamp;
+    // 消费队列位置
     private final long consumeQueueOffset;
     private final String keys;
     private final boolean success;

@@ -92,6 +92,8 @@ public interface MessageStore {
     PutMessageResult putMessages(final MessageExtBatch messageExtBatch);
 
     /**
+     * 获取消息结果
+     *
      * Query at most <code>maxMsgNums</code> messages belonging to <code>topic</code> at <code>queueId</code> starting
      * from given <code>offset</code>. Resulting messages will further be screened using provided message filter.
      *
@@ -99,7 +101,7 @@ public interface MessageStore {
      * @param topic Topic to query.
      * @param queueId Queue ID to query.
      * @param offset Logical offset to start from.
-     * @param maxMsgNums Maximum count of messages to query.
+     * @param maxMsgNums Maximum count of messages to query.  消息数量
      * @param messageFilter Message filter used to screen desired messages.
      * @return Matched messages.
      */

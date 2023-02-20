@@ -39,6 +39,7 @@ public class DefaultMessageFilter implements MessageFilter {
             return true;
         }
 
+        // `订阅表达式`全匹配  或  订阅数据 code 数组是否包含消息 tagsCode
         return subscriptionData.getSubString().equals(SubscriptionData.SUB_ALL)
             || subscriptionData.getCodeSet().contains(tagsCode.intValue());
     }
