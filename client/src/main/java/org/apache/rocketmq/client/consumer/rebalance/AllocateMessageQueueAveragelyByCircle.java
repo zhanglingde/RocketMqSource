@@ -28,12 +28,12 @@ public class AllocateMessageQueueAveragelyByCircle extends AbstractAllocateMessa
     @Override
     public List<MessageQueue> allocate(String consumerGroup, String currentCID, List<MessageQueue> mqAll,
         List<String> cidAll) {
-
+        // 校验参数是否正确
         List<MessageQueue> result = new ArrayList<MessageQueue>();
         if (!check(consumerGroup, currentCID, mqAll, cidAll)) {
             return result;
         }
-
+        // 环状分配
         int index = cidAll.indexOf(currentCID);
         for (int i = index; i < mqAll.size(); i++) {
             if (i % cidAll.size() == index) {

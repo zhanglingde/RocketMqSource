@@ -1102,6 +1102,19 @@ public class MQClientAPIImpl {
         return response.getCode() == ResponseCode.SUCCESS;
     }
 
+    /**
+     * 发回消息
+     *
+     * @param addr Broker 地址
+     * @param msg 消息
+     * @param consumerGroup 消费分组
+     * @param delayLevel 延迟级别
+     * @param timeoutMillis 超时
+     * @param maxConsumeRetryTimes 消费最大重试次数
+     * @throws RemotingException
+     * @throws MQBrokerException Broker 异常
+     * @throws InterruptedException 线程中断异常
+     */
     public void consumerSendMessageBack(
         final String addr,
         final MessageExt msg,
