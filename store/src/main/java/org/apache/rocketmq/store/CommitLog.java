@@ -604,6 +604,12 @@ public class CommitLog {
         return keyBuilder.toString();
     }
 
+    /**
+     * 添加消息，返回消息结果
+     *
+     * @param msg 消息
+     * @return 结果
+     */
     public CompletableFuture<PutMessageResult> asyncPutMessage(final MessageExtBrokerInner msg) {
         // Set the storage time
         msg.setStoreTimestamp(System.currentTimeMillis());
@@ -617,7 +623,7 @@ public class CommitLog {
 
         String topic = msg.getTopic();
 //        int queueId msg.getQueueId();
-        // 事务相关
+        // 定时消息处理
         final int tranType = MessageSysFlag.getTransactionValue(msg.getSysFlag());
         if (tranType == MessageSysFlag.TRANSACTION_NOT_TYPE
                 || tranType == MessageSysFlag.TRANSACTION_COMMIT_TYPE) {
@@ -627,7 +633,9 @@ public class CommitLog {
                     msg.setDelayTimeLevel(this.defaultMessageStore.getScheduleMessageService().getMaxDelayLevel());
                 }
 
+                // 存储消息时，延迟消息进入 `Topic` 为 `SCHEDULE_TOPIC_XXXX`
                 topic = TopicValidator.RMQ_SYS_SCHEDULE_TOPIC;
+                // 延迟级别 与 消息队列编号 做固定映射
                 int queueId = ScheduleMessageService.delayLevel2QueueId(msg.getDelayTimeLevel());
 
                 // Backup real topic, queueId

@@ -119,6 +119,14 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             this.brokerController.getMessageStore().isTransientStorePoolDeficient();
     }
 
+    /**
+     * 消费者发回消息
+     *
+     * @param ctx ctx
+     * @param request 请求
+     * @return 响应
+     * @throws RemotingCommandException 远程调用异常
+     */
     private CompletableFuture<RemotingCommand> asyncConsumerSendMsgBack(ChannelHandlerContext ctx,
                                                                         RemotingCommand request) throws RemotingCommandException {
         // 初始化响应
