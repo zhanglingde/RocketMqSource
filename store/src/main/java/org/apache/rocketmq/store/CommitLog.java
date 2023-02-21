@@ -894,6 +894,7 @@ public class CommitLog {
                     GroupCommitRequest request = new GroupCommitRequest(result.getWroteOffset() + result.getWroteBytes(),
                             this.defaultMessageStore.getMessageStoreConfig().getSlaveTimeout());
                     service.putRequest(request);
+                    // 唤醒 WriteSocketService
                     service.getWaitNotifyObject().wakeupAll();
                     return request.future();
                 }
