@@ -16,6 +16,9 @@
  */
 package org.apache.rocketmq.client.impl;
 
+/**
+ * 三种模式：消息从发送方到达 broker 的阶段
+ */
 public enum CommunicationMode {
     SYNC,
     ASYNC,

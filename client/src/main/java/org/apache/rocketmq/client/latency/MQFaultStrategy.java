@@ -71,7 +71,7 @@ public class MQFaultStrategy {
     }
 
     /**
-     * 根据 Topic发布信息 选择一个消息队列
+     * 根据 Topic 发布信息 选择一个消息队列
      *
      * @param tpInfo Topic发布信息
      * @param lastBrokerName brokerName

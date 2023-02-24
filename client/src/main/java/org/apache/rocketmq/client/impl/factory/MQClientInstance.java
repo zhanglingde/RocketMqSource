@@ -627,7 +627,7 @@ public class MQClientInstance {
             }
         }
     }
-
+    // 更新命名空间的 Topic 路由信息
     public boolean updateTopicRouteInfoFromNameServer(final String topic, boolean isDefault,
         DefaultMQProducer defaultMQProducer) {
         try {
