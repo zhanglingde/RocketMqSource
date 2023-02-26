@@ -178,14 +178,14 @@ public abstract class AbstractSendMessageProcessor extends AsyncNettyRequestProc
         if (!TopicValidator.validateTopic(requestHeader.getTopic(), response)) {
             return response;
         }
-        // 检查topic是否可以被发送。目前是{@link MixAll.DEFAULT_TOPIC}不被允许发送
+        // 检查 topic 是否可以被发送。目前是 {@link MixAll.DEFAULT_TOPIC} 不被允许发送
         if (TopicValidator.isNotAllowedSendTopic(requestHeader.getTopic(), response)) {
             return response;
         }
 
+        // 获取 TopicConfig，不存在则进行创建
         TopicConfig topicConfig = this.brokerController.getTopicConfigManager().selectTopicConfig(requestHeader.getTopic());
         if (null == topicConfig) {
-            // 不存在topicConfig，则进行创建
             int topicSysFlag = 0;
             if (requestHeader.isUnitMode()) {
                 if (requestHeader.getTopic().startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
@@ -196,7 +196,7 @@ public abstract class AbstractSendMessageProcessor extends AsyncNettyRequestProc
             }
 
             log.warn("the topic {} not exist, producer: {}", requestHeader.getTopic(), ctx.channel().remoteAddress());
-            // 创建topic配置
+            // 创建 topic 配置
             topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageMethod(
                     requestHeader.getTopic(),
                     requestHeader.getDefaultTopic(),
@@ -211,7 +211,7 @@ public abstract class AbstractSendMessageProcessor extends AsyncNettyRequestProc
                                     topicSysFlag);
                 }
             }
-            // 没有配置 topic
+            // 没有 topic ,返回相应状态码
             if (null == topicConfig) {
                 response.setCode(ResponseCode.TOPIC_NOT_EXIST);
                 response.setRemark("topic[" + requestHeader.getTopic() + "] not exist, apply first please!"
@@ -272,6 +272,11 @@ public abstract class AbstractSendMessageProcessor extends AsyncNettyRequestProc
         }
     }
 
+    /**
+     * 解析请求
+     * @param request
+     * @return
+     */
     protected SendMessageRequestHeader parseRequestHeader(RemotingCommand request)
             throws RemotingCommandException {
 

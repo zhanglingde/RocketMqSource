@@ -370,13 +370,13 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     private PutMessageStatus checkMessage(MessageExtBrokerInner msg) {
-        // 消息过长
+        // topic 长度不能超过 127
         if (msg.getTopic().length() > Byte.MAX_VALUE) {
             log.warn("putMessage message topic length too long " + msg.getTopic().length());
             return PutMessageStatus.MESSAGE_ILLEGAL;
         }
 
-        // 消息附加属性过长
+        // 消息属性长度不能超过 32767，2^15 -1
         if (msg.getPropertiesString() != null && msg.getPropertiesString().length() > Short.MAX_VALUE) {
             log.warn("putMessage message properties length too long " + msg.getPropertiesString().length());
             return PutMessageStatus.MESSAGE_ILLEGAL;
@@ -398,8 +398,13 @@ public class DefaultMessageStore implements MessageStore {
         return PutMessageStatus.PUT_OK;
     }
 
+    /**
+     * 校验 Broker store 的状态，是否允许存储消息
+     * @return
+     */
     private PutMessageStatus checkStoreStatus() {
         if (this.shutdown) {
+            // broker 实例停止、拒绝
             log.warn("message store has shutdown, so putMessage is forbidden");
             return PutMessageStatus.SERVICE_NOT_AVAILABLE;
         }
@@ -415,6 +420,7 @@ public class DefaultMessageStore implements MessageStore {
 
         // store是否允许写入
         if (!this.runningFlags.isWriteable()) {
+            // broker 不支持写入，可能磁盘满了/写 consumeQueue 错误/写 IndexFile 等原因，拒绝写入
             long value = this.printTimes.getAndIncrement();
             if ((value % 50000) == 0) {
                 log.warn("the message store is not writable. It may be caused by one of the following reasons: " +
@@ -426,12 +432,14 @@ public class DefaultMessageStore implements MessageStore {
         }
 
         if (this.isOSPageCacheBusy()) {
+            // 操作系统 PageCache 繁忙
             return PutMessageStatus.OS_PAGECACHE_BUSY;
         }
         return PutMessageStatus.PUT_OK;
     }
 
     private PutMessageStatus checkLmqMessage(MessageExtBrokerInner msg) {
+        // 如果开启 light mq 功能，超过 Lmq 队列数量则拒绝写入
         if (msg.getProperties() != null
             && StringUtils.isNotBlank(msg.getProperty(MessageConst.PROPERTY_INNER_MULTI_DISPATCH))
             && this.isLmqConsumeQueueNumExceeded()) {
@@ -450,16 +458,18 @@ public class DefaultMessageStore implements MessageStore {
 
     @Override
     public CompletableFuture<PutMessageResult> asyncPutMessage(MessageExtBrokerInner msg) {
+        // 1. 先校验 Broker 是否可写消息
         PutMessageStatus checkStoreStatus = this.checkStoreStatus();
         if (checkStoreStatus != PutMessageStatus.PUT_OK) {
             return CompletableFuture.completedFuture(new PutMessageResult(checkStoreStatus, null));
         }
-
+        // 2. 检查 topic 长度，消息长度
         PutMessageStatus msgCheckStatus = this.checkMessage(msg);
         if (msgCheckStatus == PutMessageStatus.MESSAGE_ILLEGAL) {
             return CompletableFuture.completedFuture(new PutMessageResult(msgCheckStatus, null));
         }
 
+        // 3. LMQ 消息检查
         PutMessageStatus lmqMsgCheckStatus = this.checkLmqMessage(msg);
         if (msgCheckStatus == PutMessageStatus.LMQ_CONSUME_QUEUE_NUM_EXCEEDED) {
             return CompletableFuture.completedFuture(new PutMessageResult(lmqMsgCheckStatus, null));
@@ -467,8 +477,10 @@ public class DefaultMessageStore implements MessageStore {
 
 
         long beginTime = this.getSystemClock().now();
+        // 4. 消息保存，保存后返回异步结果对象
         CompletableFuture<PutMessageResult> putResultFuture = this.commitLog.asyncPutMessage(msg);
 
+        // 5. 记录本次保存消息的消耗时间 及 记录消息保存失败的次数
         putResultFuture.thenAccept(result -> {
             long elapsedTime = this.getSystemClock().now() - beginTime;
             if (elapsedTime > 500) {
@@ -477,6 +489,7 @@ public class DefaultMessageStore implements MessageStore {
             this.storeStatsService.setPutMessageEntireTimeMax(elapsedTime);
 
             if (null == result || !result.isOk()) {
+                //消息保存失败后，失败数加1
                 this.storeStatsService.getPutMessageFailedTimes().add(1);
             }
         });

@@ -265,6 +265,7 @@ public class RemotingCommand {
             boolean useFastEncode) throws RemotingCommandException {
         CommandCustomHeader objectHeader;
         try {
+            // 构建对象
             objectHeader = classHeader.getDeclaredConstructor().newInstance();
         } catch (InstantiationException e) {
             return null;
@@ -282,7 +283,7 @@ public class RemotingCommand {
                 objectHeader.checkFields();
                 return objectHeader;
             }
-
+            // 解码 RemotingCommand 命令
             Field[] fields = getClazzFields(classHeader);
             for (Field field : fields) {
                 if (!Modifier.isStatic(field.getModifiers())) {

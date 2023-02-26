@@ -199,6 +199,13 @@ public class MappedFile extends ReferenceResource {
         return fileChannel;
     }
 
+    /**
+     * 执行该方法保存消息后，消息还只是保存在内存中，并未真正保存到 CommitLog 文件中
+     * @param msg
+     * @param cb
+     * @param putMessageContext
+     * @return
+     */
     public AppendMessageResult appendMessage(final MessageExtBrokerInner msg, final AppendMessageCallback cb,
             PutMessageContext putMessageContext) {
         return appendMessagesInner(msg, cb, putMessageContext);

@@ -55,7 +55,8 @@ public interface MessageStore {
      */
     void destroy();
 
-    /** Store a message into store in async manner, the processor can process the next request
+    /**
+     * Store a message into store in async manner, the processor can process the next request
      *  rather than wait for result
      *  when result is completed, notify the client in async manner
      *

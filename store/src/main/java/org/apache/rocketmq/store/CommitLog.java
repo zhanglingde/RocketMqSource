@@ -596,6 +596,13 @@ public class CommitLog {
         return beginTimeInLock;
     }
 
+    /**
+     * 生成 key
+     *
+     * @param keyBuilder
+     * @param messageExt
+     * @return topic+"-"+queueId
+     */
     private String generateKey(StringBuilder keyBuilder, MessageExt messageExt) {
         keyBuilder.setLength(0);
         keyBuilder.append(messageExt.getTopic());
@@ -613,8 +620,8 @@ public class CommitLog {
     public CompletableFuture<PutMessageResult> asyncPutMessage(final MessageExtBrokerInner msg) {
         // Set the storage time
         msg.setStoreTimestamp(System.currentTimeMillis());
-        // Set the message body BODY CRC (consider the most appropriate setting
-        // on the client)
+        // Set the message body BODY CRC (consider the most appropriate setting on the client)
+        // 在保存消息内容之前，先将消息内容计算出一个 CRC 校验码，用于后续消息内容校验
         msg.setBodyCRC(UtilAll.crc32(msg.getBody()));
         // Back to Results
         AppendMessageResult result = null;
@@ -622,18 +629,19 @@ public class CommitLog {
         StoreStatsService storeStatsService = this.defaultMessageStore.getStoreStatsService();
 
         String topic = msg.getTopic();
-//        int queueId msg.getQueueId();
-        // 定时消息处理
+
+        // 1. 对于延时消息，把消息原始 topic 及 queueId 存入到消息的属性中，然后将当前topic、queueId替换为延时消息固定的topic（SCHEDULE_TOPIC_XXXX）以及根据延时级别计算出来的queueId
         final int tranType = MessageSysFlag.getTransactionValue(msg.getSysFlag());
         if (tranType == MessageSysFlag.TRANSACTION_NOT_TYPE
                 || tranType == MessageSysFlag.TRANSACTION_COMMIT_TYPE) {
             // Delay Delivery
             if (msg.getDelayTimeLevel() > 0) {
+                // 延时消息
                 if (msg.getDelayTimeLevel() > this.defaultMessageStore.getScheduleMessageService().getMaxDelayLevel()) {
                     msg.setDelayTimeLevel(this.defaultMessageStore.getScheduleMessageService().getMaxDelayLevel());
                 }
 
-                // 存储消息时，延迟消息进入 `Topic` 为 `SCHEDULE_TOPIC_XXXX`
+                // 存储消息时，延迟消息进入 `Topic` 为 `SCHEDULE_TOPIC_XXXX`，对应延时级别的 queueId 代替
                 topic = TopicValidator.RMQ_SYS_SCHEDULE_TOPIC;
                 // 延迟级别 与 消息队列编号 做固定映射
                 int queueId = ScheduleMessageService.delayLevel2QueueId(msg.getDelayTimeLevel());
@@ -666,14 +674,17 @@ public class CommitLog {
             }
             msg.setEncodedBuff(putMessageThreadLocal.getEncoder().getEncoderBuffer());
         }
+        // 2. 创建PutMessageContext对象，该对象中topicQueueTableKey属性值为 topic+"-"+queueId
         PutMessageContext putMessageContext = new PutMessageContext(generateKey(putMessageThreadLocal.getKeyBuilder(), msg));
 
         long elapsedTimeInLock = 0;
         MappedFile unlockMappedFile = null;   // 获取写入映射文件
 
+        // 3. 消息添加到内存 commitLog 对象中
         // 获取写入锁
         putMessageLock.lock(); //spin or ReentrantLock ,depending on store config
         try {
+            // 从 mappedFileQueue 中获取最后一个 commitLog 对象
             MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
             long beginLockTimestamp = this.defaultMessageStore.getSystemClock().now();
             this.beginTimeInLock = beginLockTimestamp;
@@ -682,7 +693,7 @@ public class CommitLog {
             // global
             msg.setStoreTimestamp(beginLockTimestamp);
 
-            // 当不存在映射文件时，进行创建
+            // 当不存在映射文件时 或 commitLog 已满，重新创建一个
             if (null == mappedFile || mappedFile.isFull()) {
                 mappedFile = this.mappedFileQueue.getLastMappedFile(0); // Mark: NewFile may be cause noise
             }
@@ -691,7 +702,7 @@ public class CommitLog {
                 return CompletableFuture.completedFuture(new PutMessageResult(PutMessageStatus.CREATE_MAPEDFILE_FAILED, null));
             }
 
-            // 存储消息
+            // 存储消息（当前 commitLog 对象添加消息，添加消息还在内存对象中）
             result = mappedFile.appendMessage(msg, this.appendMessageCallback, putMessageContext);
             switch (result.getStatus()) {
                 case PUT_OK:
@@ -737,7 +748,9 @@ public class CommitLog {
         storeStatsService.getSinglePutMessageTopicTimesTotal(msg.getTopic()).add(1);
         storeStatsService.getSinglePutMessageTopicSizeTotal(topic).add(result.getWroteBytes());
 
+        // 4. 提交刷盘
         CompletableFuture<PutMessageStatus> flushResultFuture = submitFlushRequest(result, msg);
+        // 5. HA 机制同步
         CompletableFuture<PutMessageStatus> replicaResultFuture = submitReplicaRequest(result, msg);
         return flushResultFuture.thenCombine(replicaResultFuture, (flushStatus, replicaStatus) -> {
             if (flushStatus != PutMessageStatus.PUT_OK) {
