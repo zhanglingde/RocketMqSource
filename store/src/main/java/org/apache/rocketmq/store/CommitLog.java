@@ -613,7 +613,9 @@ public class CommitLog {
 
     /**
      * 添加消息，返回消息结果
-     *
+     * 1. 前置检查，检查当前broker可写状态，检查消息合法性
+     * 2. 调用commitLog.asyncPutMessage(msg)保存消息
+     * 3. 后置处理，记录保存消息最大时间消耗、消息保存失败次数
      * @param msg 消息
      * @return 结果
      */
@@ -684,7 +686,7 @@ public class CommitLog {
         // 获取写入锁
         putMessageLock.lock(); //spin or ReentrantLock ,depending on store config
         try {
-            // 从 mappedFileQueue 中获取最后一个 commitLog 对象
+            // 3.1 从 mappedFileQueue 中获取最后一个 commitLog 对象
             MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
             long beginLockTimestamp = this.defaultMessageStore.getSystemClock().now();
             this.beginTimeInLock = beginLockTimestamp;
@@ -907,7 +909,7 @@ public class CommitLog {
     }
 
     public CompletableFuture<PutMessageStatus> submitReplicaRequest(AppendMessageResult result, MessageExt messageExt) {
-        // 如果是同步Master，同步到从节点 // TODO 待读：数据同步
+        // 如果是同步 Master，同步到从节点 // TODO 待读：数据同步
         if (BrokerRole.SYNC_MASTER == this.defaultMessageStore.getMessageStoreConfig().getBrokerRole()) {
             HAService service = this.defaultMessageStore.getHaService();
             if (messageExt.isWaitStoreMsgOK()) {
