@@ -48,6 +48,7 @@ public interface MQAdmin {
         throws MQClientException;
 
     /**
+     * 根据时间戳查询消息偏移量
      * Gets the message queue offset according to some time in milliseconds<br>
      * be cautious to call because of more IO overhead
      *
@@ -58,6 +59,7 @@ public interface MQAdmin {
     long searchOffset(final MessageQueue mq, final long timestamp) throws MQClientException;
 
     /**
+     * 查找消息队列中最大消息偏移量
      * Gets the max offset
      *
      * @param mq Instance of MessageQueue
@@ -66,6 +68,7 @@ public interface MQAdmin {
     long maxOffset(final MessageQueue mq) throws MQClientException;
 
     /**
+     * 查找消息队列中最大消息偏移量
      * Gets the minimum offset
      *
      * @param mq Instance of MessageQueue
@@ -74,6 +77,7 @@ public interface MQAdmin {
     long minOffset(final MessageQueue mq) throws MQClientException;
 
     /**
+     * 消息队列最早存储消息的时间
      * Gets the earliest stored message time
      *
      * @param mq Instance of MessageQueue
@@ -82,6 +86,7 @@ public interface MQAdmin {
     long earliestMsgStoreTime(final MessageQueue mq) throws MQClientException;
 
     /**
+     * 查找消息 id 对应消息内容
      * Query message according to message id
      *
      * @param offsetMsgId message id
@@ -91,6 +96,7 @@ public interface MQAdmin {
         InterruptedException, MQClientException;
 
     /**
+     * 消息主题、key、最大取出消息条数、开始时间、结束时间查找匹配消息
      * Query messages
      *
      * @param topic message topic
@@ -104,6 +110,7 @@ public interface MQAdmin {
         final long end) throws MQClientException, InterruptedException;
 
     /**
+     * 消息主题、消息id查找
      * @return The {@code MessageExt} of given msgId
      */
     MessageExt viewMessage(String topic,

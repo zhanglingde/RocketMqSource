@@ -169,7 +169,7 @@ public class DefaultMessageStore implements MessageStore {
         this.dispatcherList = new LinkedList<>();
         this.dispatcherList.addLast(new CommitLogDispatcherBuildConsumeQueue());
         this.dispatcherList.addLast(new CommitLogDispatcherBuildIndex());
-
+        // 存储文件
         File file = new File(StorePathConfigHelper.getLockFile(messageStoreConfig.getStorePathRootDir()));
         MappedFile.ensureDirOK(file.getParent());
         MappedFile.ensureDirOK(getStorePathPhysic());
@@ -574,14 +574,27 @@ public class DefaultMessageStore implements MessageStore {
         return commitLog;
     }
 
+    /**
+     * 根据 消息分组(group) + 主题(Topic) + 队列编号(queueId) + 队列位置(offset) + 订阅信息(subscriptionData) 获取 指定条数(maxMsgNums) 消息(Message)
+     *
+     * @param group Consumer group that launches this query.
+     * @param topic Topic to query.
+     * @param queueId Queue ID to query.
+     * @param offset Logical offset to start from.
+     * @param maxMsgNums Maximum count of messages to query.  消息数量
+     * @param messageFilter Message filter used to screen desired messages.
+     * @return
+     */
     public GetMessageResult getMessage(final String group, final String topic, final int queueId, final long offset,
         final int maxMsgNums,
         final MessageFilter messageFilter) {
+        // Store 是否关闭
         if (this.shutdown) {
             log.warn("message store has shutdown, so getMessage is forbidden");
             return null;
         }
 
+        // 是否可读
         if (!this.runningFlags.isReadable()) {
             log.warn("message store is not readable, so getMessage is forbidden " + this.runningFlags.getFlagBits());
             return null;
@@ -621,15 +634,15 @@ public class DefaultMessageStore implements MessageStore {
                 status = GetMessageStatus.OFFSET_TOO_SMALL;
                 nextBeginOffset = nextOffsetCorrection(offset, minOffset);
             } else if (offset == maxOffset) {
-                // 查询offset 超过 消费队列 一个位置
+                // 查询的消费队列位置（offset） 恰好等于 消息队列最大的队列位置。该情况是正常现象，相当于查询最新的消息。
                 status = GetMessageStatus.OFFSET_OVERFLOW_ONE;
                 nextBeginOffset = nextOffsetCorrection(offset, offset);
             } else if (offset > maxOffset) {
-                // 查询offset 超过 消费队列 太多(大于一个位置)
+                // 查询的消费队列位置（offset） 超过 消费队列 太多(大于一个位置)
                 status = GetMessageStatus.OFFSET_OVERFLOW_BADLY;
                 nextBeginOffset = nextOffsetCorrection(offset, maxOffset);
             } else {
-                // 获得 映射Buffer结果(MappedFile)
+                // 根据 消费队列位置(offset) 获取 对应的MappedFile
                 SelectMappedBufferResult bufferConsumeQueue = consumeQueue.getIndexBuffer(offset);
                 if (bufferConsumeQueue != null) {
                     try {
@@ -663,6 +676,7 @@ public class DefaultMessageStore implements MessageStore {
                                     continue;
                             }
 
+                            // 判断是否已经获得足够的消息
                             // 校验 commitLog 是否需要硬盘，无法全部放在内存
                             boolean isInDisk = checkInDiskByCommitOffset(offsetPy, maxOffsetPy);
 
@@ -685,6 +699,7 @@ public class DefaultMessageStore implements MessageStore {
                                 }
                             }
 
+                            // 判断消息是否符合条件
                             if (messageFilter != null
                                 && !messageFilter.isMatchedByConsumeQueue(isTagsCodeLegal ? tagsCode : null, extRet ? cqExtUnit : null)) {
                                 if (getResult.getBufferTotalSize() == 0) {
@@ -697,6 +712,8 @@ public class DefaultMessageStore implements MessageStore {
                             // 从 commitLog 获取对应消息ByteBuffer
                             SelectMappedBufferResult selectResult = this.commitLog.getMessage(offsetPy, sizePy);
                             if (null == selectResult) {
+                                // 获取消息 MappedByteBuffer 失败，从 CommitLog 无法读取到消息，说明该消息对应的文件（MappedFile）已经删除；
+                                // 此时计算下一个 MappedFile 的起始位置。
                                 if (getResult.getBufferTotalSize() == 0) {
                                     status = GetMessageStatus.MESSAGE_WAS_REMOVING;
                                 }
@@ -736,7 +753,7 @@ public class DefaultMessageStore implements MessageStore {
                             * (this.messageStoreConfig.getAccessMessageInMemoryMaxRatio() / 100.0));
                         getResult.setSuggestPullingFromSlave(diff > memory);
                     } finally {
-
+                        // 释放 bufferConsumeQueue 对 MappedFile 的指向。此处 MappedFile 是 ConsumeQueue 里的文件，不是 CommitLog 下的文件
                         bufferConsumeQueue.release();
                     }
                 } else {
@@ -747,11 +764,12 @@ public class DefaultMessageStore implements MessageStore {
                 }
             }
         } else {
+            // 获得消费队列位置(offset) 获取 对应的MappedFile 为空，计算ConsumeQueue 从 offset 开始的下一个 MappedFile 对应的位置
             status = GetMessageStatus.NO_MATCHED_LOGIC_QUEUE;
             nextBeginOffset = nextOffsetCorrection(offset, 0);
         }
 
-        // 统计
+        // 记录统计信息：消耗时间、 拉取到的消息/未拉取到的消息次数
         if (GetMessageStatus.FOUND == status) {
             this.storeStatsService.getGetMessageTimesTotalFound().add(1);
         } else {
