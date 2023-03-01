@@ -572,13 +572,20 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
         }
     }
 
+    /**
+     * 唤醒请求，再次拉取消息。丢到线程池进行进一步的消息拉取，不会阻塞
+     *
+     * @param channel
+     * @param request
+     * @throws RemotingCommandException
+     */
     public void executeRequestWhenWakeup(final Channel channel,
         final RemotingCommand request) throws RemotingCommandException {
         Runnable run = new Runnable() {
             @Override
             public void run() {
                 try {
-                    // 调用拉取请求。本次调用，设置不挂起请求。
+                    // 调用拉取请求。本次调用，设置即使请求不到消息，也不挂起请求。如不设置，请求可能被无限挂起，被 Broker 无限循环
                     final RemotingCommand response = PullMessageProcessor.this.processRequest(channel, request, false);
 
                     if (response != null) {

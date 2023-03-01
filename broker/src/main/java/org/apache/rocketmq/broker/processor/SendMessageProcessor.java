@@ -62,6 +62,9 @@ import org.apache.rocketmq.store.config.MessageStoreConfig;
 import org.apache.rocketmq.store.config.StorePathConfigHelper;
 import org.apache.rocketmq.store.stats.BrokerStatsManager;
 
+/**
+
+ */
 public class SendMessageProcessor extends AbstractSendMessageProcessor implements NettyRequestProcessor {
 
     private List<ConsumeMessageHook> consumeMessageHookList;
@@ -119,7 +122,10 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
     }
 
     /**
-     * 消费者发回消息
+     * 消费者发回消息（逻辑类似 Broker 接收普通消息，和接收普通消息 有区别的地方会标注 独有）
+     *
+     * 当 Consumer 消费某条消息失败时，会调用该接口发回消息。 Broker 会存储发回的消息。
+     * 下次 Consumer 拉取该消息，能够从 CommitLog 和 ConsumerQueue 顺序读取
      *
      * @param ctx     ctx
      * @param request 请求
@@ -163,17 +169,17 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             return CompletableFuture.completedFuture(response);
         }
 
-        // 计算retry Topic
+        // 计算 retry Topic
         String newTopic = MixAll.getRetryTopic(requestHeader.getGroup());
-        // 计算队列编号（独有）
+        // 计算队列编号，随机分配队列编号，依赖 retryQueueNums（独有）
         int queueIdInt = ThreadLocalRandom.current().nextInt(99999999) % subscriptionGroupConfig.getRetryQueueNums();
-        // 计算sysFlag（独有）
+        // 计算 sysFlag（独有）
         int topicSysFlag = 0;
         if (requestHeader.isUnitMode()) {
             topicSysFlag = TopicSysFlag.buildSysFlag(false, true);
         }
 
-        // 获取topicConfig。如果获取不到，则进行创建
+        // 获取 topicConfig。如果获取不到，则进行创建
         TopicConfig topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(
                 newTopic,
                 subscriptionGroupConfig.getRetryQueueNums(),
@@ -199,12 +205,12 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             return CompletableFuture.completedFuture(response);
         }
 
-        // 设置retryTopic到拓展属性（独有）
+        // 设置 retryTopic 到拓展属性（独有）
         final String retryTopic = msgExt.getProperty(MessageConst.PROPERTY_RETRY_TOPIC);
         if (null == retryTopic) {
             MessageAccessor.putProperty(msgExt, MessageConst.PROPERTY_RETRY_TOPIC, msgExt.getTopic());
         }
-        // 设置消息不等待存储完成（独有） TODO 疑问：如果设置成不等待存储，broker设置成同步落盘，岂不是不能批量提交了？
+        // 设置消息不等待存储完成（独有） TODO 疑问：如果设置成不等待存储，broker 设置成同步落盘，岂不是不能批量提交了？
         msgExt.setWaitStoreMsgOK(false);
 
         // 处理 delayLevel（独有）。
@@ -241,7 +247,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             msgExt.setDelayTimeLevel(delayLevel);
         }
 
-        // 创建MessageExtBrokerInner
+        // 创建 MessageExtBrokerInner
         MessageExtBrokerInner msgInner = new MessageExtBrokerInner();
         msgInner.setTopic(newTopic);
         msgInner.setBody(msgExt.getBody());
