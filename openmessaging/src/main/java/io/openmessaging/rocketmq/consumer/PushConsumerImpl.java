@@ -165,7 +165,8 @@ public class PushConsumerImpl implements PushConsumer {
 
         @Override
         public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> rmqMsgList,
-            ConsumeConcurrentlyContext contextRMQ) {
+                                                        ConsumeConcurrentlyContext contextRMQ) {
+
             MessageExt rmqMsg = rmqMsgList.get(0);
             BytesMessage omsMsg = OMSUtil.msgConvert(rmqMsg);
 

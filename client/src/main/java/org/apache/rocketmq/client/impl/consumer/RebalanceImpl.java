@@ -262,7 +262,7 @@ public abstract class RebalanceImpl {
                 break;
             }
             case CLUSTERING: {
-                // 获取 topic 对应的 队列 和 consumer信息
+                // 获取 topic 对应的 消息队列 和 consumer信息
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
                 List<String> cidAll = this.mQClientFactory.findConsumerIdList(topic, consumerGroup);
                 if (null == mqSet) {
@@ -353,7 +353,7 @@ public abstract class RebalanceImpl {
         final boolean isOrder) {
         boolean changed = false;
 
-        // 移除 在processQueueTable && 不存在于 mqSet 里的消息队列
+        // 移除 在 processQueueTable && 不存在于 mqSet 里的消息队列
         Iterator<Entry<MessageQueue, ProcessQueue>> it = this.processQueueTable.entrySet().iterator();
         while (it.hasNext()) {
             Entry<MessageQueue, ProcessQueue> next = it.next();
