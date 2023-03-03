@@ -52,6 +52,7 @@ public class ClientConfig {
      */
     private int heartbeatBrokerInterval = 1000 * 30;
     /**
+     * 默认持久化周期 5000ms
      * Offset persistent interval for consumer
      */
     private int persistConsumerOffsetInterval = 1000 * 5;

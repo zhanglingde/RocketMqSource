@@ -24,6 +24,7 @@ import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 
 /**
+ * 消费进度
  * Offset store interface
  */
 public interface OffsetStore {
@@ -33,11 +34,13 @@ public interface OffsetStore {
     void load() throws MQClientException;
 
     /**
+     * 更新消费进度，两个子类实现方式相同
      * Update the offset,store it in memory
      */
     void updateOffset(final MessageQueue mq, final long offset, final boolean increaseOnly);
 
     /**
+     * 读取消费进度
      * Get offset from local storage
      *
      * @return The fetched offset
@@ -45,6 +48,7 @@ public interface OffsetStore {
     long readOffset(final MessageQueue mq, final ReadOffsetType type);
 
     /**
+     * 持久化消费进度
      * Persist all offsets,may be in local storage or remote name server
      */
     void persistAll(final Set<MessageQueue> mqs);

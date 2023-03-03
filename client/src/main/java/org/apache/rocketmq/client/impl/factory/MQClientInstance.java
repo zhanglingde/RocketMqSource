@@ -273,11 +273,11 @@ public class MQClientInstance {
     }
 
     /**
-     * 获取NameServer地址、更新TopicRoute信息、清理离线的Broker和保存消费者的Offset
+     * 获取 NameServer 地址、更新 TopicRoute 信息、清理离线的 Broker 和保存消费者的 Offset
      */
     private void startScheduledTask() {
         if (null == this.clientConfig.getNamesrvAddr()) {
-            // 定时获取 NameServer 地址（定时同步消费进度）
+            // 1. 定时获取 NameServer 地址（定时同步消费进度）
             this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
                 @Override
@@ -291,7 +291,7 @@ public class MQClientInstance {
             }, 1000 * 10, 1000 * 60 * 2, TimeUnit.MILLISECONDS);
         }
 
-        // 定时更新 TopicRoute 信息
+        // 2. 定时更新 TopicRoute 信息
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -304,7 +304,7 @@ public class MQClientInstance {
             }
         }, 10, this.clientConfig.getPollNameServerInterval(), TimeUnit.MILLISECONDS);
 
-        // 定时清理离线的Broker
+        // 3. 定时清理离线的 Broker
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -318,7 +318,7 @@ public class MQClientInstance {
             }
         }, 1000, this.clientConfig.getHeartbeatBrokerInterval(), TimeUnit.MILLISECONDS);
 
-        // 定时保存消费者的 Offset
+        // 4. 定时保存消费者的 Offset
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -506,7 +506,11 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * 持久化消费进度
+     */
     private void persistAllConsumerOffset() {
+        // 获取消费者列表 topic -> 消费者内部界面
         Iterator<Entry<String, MQConsumerInner>> it = this.consumerTable.entrySet().iterator();
         while (it.hasNext()) {
             Entry<String, MQConsumerInner> entry = it.next();
@@ -978,6 +982,7 @@ public class MQClientInstance {
     }
 
     public void doRebalance() {
+        // 遍历消费者组，每个组内的消费者队列进行负载均衡
         for (Map.Entry<String, MQConsumerInner> entry : this.consumerTable.entrySet()) {
             MQConsumerInner impl = entry.getValue();
             if (impl != null) {
@@ -1010,33 +1015,32 @@ public class MQClientInstance {
     /**
      * 获得 Broker 信息
      *
-     * @param brokerName broker名字
-     * @param brokerId broker编号
-     * @param onlyThisBroker 是否必须是该broker
+     * @param brokerName broker 名字
+     * @param brokerId broker 编号
+     * @param onlyThisBroker 是否必须是该 broker
      * @return Broker信息
      */
-    public FindBrokerResult findBrokerAddressInSubscribe(
-        final String brokerName,
-        final long brokerId,
-        final boolean onlyThisBroker
-    ) {
+    public FindBrokerResult findBrokerAddressInSubscribe(final String brokerName,
+                                                         final long brokerId,
+                                                         final boolean onlyThisBroker) {
+
         String brokerAddr = null;
         boolean slave = false;
         boolean found = false;
 
-        // 获得 Broker 信息
+        // 获得 Broker 信息；brokerId -> address
         HashMap<Long/* brokerId */, String/* address */> map = this.brokerAddrTable.get(brokerName);
         if (map != null && !map.isEmpty()) {
             brokerAddr = map.get(brokerId);
             slave = brokerId != MixAll.MASTER_ID;
             found = brokerAddr != null;
 
-            // 如果不强制获得，选择一个Broker
+            // 未获得 Broker 时，尝试获取 Slave 的 Broker
             if (!found && slave) {
                 brokerAddr = map.get(brokerId + 1);
                 found = brokerAddr != null;
             }
-
+            // 如果不强制获得，选择一个 Broker
             if (!found && !onlyThisBroker) {
                 Entry<Long, String> entry = map.entrySet().iterator().next();
                 brokerAddr = entry.getValue();

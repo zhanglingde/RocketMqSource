@@ -38,19 +38,20 @@ public class AllocateMessageQueueAveragely extends AbstractAllocateMessageQueueS
                                        List<MessageQueue> mqAll,
                                        List<String> cidAll) {
 
-        // 1. 校验参数是否正确
         List<MessageQueue> result = new ArrayList<MessageQueue>();
+        // 1. 校验参数是否正确（currentCID、mqAll、cidAll）
         if (!check(consumerGroup, currentCID, mqAll, cidAll)) {
             return result;
         }
 
         // 2. 平均分配
-        int index = cidAll.indexOf(currentCID);  // 第几个 Consumer。
-        int mod = mqAll.size() % cidAll.size();  // 余数，即多少消息队列无法平均分配
+        int index = cidAll.indexOf(currentCID);  // 当前消费者在所有消费者中是第几个 Consumer（所以需要排序）
+        int mod = mqAll.size() % cidAll.size();  // 余数，即多少消息队列无法平均分配 [0,mod] 范围的消费者可以多分配一个队列，(mod,max] 少分配一个队列
+        // 每个消费者分配的队列数
         int averageSize =
                 mqAll.size() <= cidAll.size() ? 1 :
                         (mod > 0 && index < mod ? mqAll.size() / cidAll.size() + 1 : mqAll.size() / cidAll.size());
-        // 有余数的情况下，[0, mod) 平分余数，即每consumer多分配一个节点；第index开始，跳过前mod余数
+        // 有余数的情况下，[0, mod) 平分余数，即每个 Consumer 多分配一个消费队列；第 index 开始，跳过前 mod 余数
         int startIndex = (mod > 0 && index < mod) ? index * averageSize : index * averageSize + mod;
         // 分配队列数量。之所以要 Math.min() 的原因是，mqAll.size() <= cidAll.size()，部分 consumer 分配不到消息队列（3 个 MessageQueue,4 个 Consumer,有一个消费者分配不到 MessageQueue）
         int range = Math.min(averageSize, mqAll.size() - startIndex);

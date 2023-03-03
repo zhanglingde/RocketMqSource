@@ -37,15 +37,22 @@ import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 
 /**
+ * Consumer 广播模式下，使用本地文件消费进度
  * Local storage implementation
  */
 public class LocalFileOffsetStore implements OffsetStore {
+    /**
+     * {HOME}/.rocketmq_offsets/
+     */
     public final static String LOCAL_OFFSET_STORE_DIR = System.getProperty(
         "rocketmq.client.localOffsetStoreDir",
         System.getProperty("user.home") + File.separator + ".rocketmq_offsets");
     private final static InternalLogger log = ClientLogger.getLog();
     private final MQClientInstance mQClientFactory;
     private final String groupName;
+    /**
+     * 消费进度持久化路径：/User/ling/.rocketmq_offsets/{clientId}/{consumerGroupName}/offsets.json
+     */
     private final String storePath;
     private ConcurrentMap<MessageQueue, AtomicLong> offsetTable =
         new ConcurrentHashMap<MessageQueue, AtomicLong>();
@@ -59,6 +66,10 @@ public class LocalFileOffsetStore implements OffsetStore {
             "offsets.json";
     }
 
+    /**
+     * 从本地文件加载消费进度到内存
+     * @throws MQClientException
+     */
     @Override
     public void load() throws MQClientException {
         // 从本地硬盘读取消费进度
@@ -109,6 +120,7 @@ public class LocalFileOffsetStore implements OffsetStore {
                     }
                 }
                 case READ_FROM_STORE: {
+                    // 从文件读取消费进度
                     OffsetSerializeWrapper offsetSerializeWrapper;
                     try {
                         offsetSerializeWrapper = this.readLocalOffset();
@@ -131,6 +143,10 @@ public class LocalFileOffsetStore implements OffsetStore {
         return -1;
     }
 
+    /**
+     * 持久化消费进度。将消费进度写入文件
+     * @param mqs
+     */
     @Override
     public void persistAll(Set<MessageQueue> mqs) {
         if (null == mqs || mqs.isEmpty())
@@ -140,6 +156,7 @@ public class LocalFileOffsetStore implements OffsetStore {
         for (Map.Entry<MessageQueue, AtomicLong> entry : this.offsetTable.entrySet()) {
             if (mqs.contains(entry.getKey())) {
                 AtomicLong offset = entry.getValue();
+                // 持久化数据格式 messageQueue -> offset
                 offsetSerializeWrapper.getOffsetTable().put(entry.getKey(), offset);
             }
         }

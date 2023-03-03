@@ -25,6 +25,8 @@ import org.apache.rocketmq.common.protocol.heartbeat.MessageModel;
 import org.apache.rocketmq.common.protocol.heartbeat.SubscriptionData;
 
 /**
+ * 消费者内部接口
+ *
  * Consumer inner interface
  */
 public interface MQConsumerInner {
@@ -38,8 +40,14 @@ public interface MQConsumerInner {
 
     Set<SubscriptionData> subscriptions();
 
+    /**
+     * 消费者队列负载均衡
+     */
     void doRebalance();
 
+    /**
+     * 持久化消费进度
+     */
     void persistConsumerOffset();
 
     void updateTopicSubscribeInfo(final String topic, final Set<MessageQueue> info);

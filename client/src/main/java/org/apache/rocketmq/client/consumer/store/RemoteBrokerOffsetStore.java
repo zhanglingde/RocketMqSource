@@ -37,6 +37,7 @@ import org.apache.rocketmq.common.protocol.header.UpdateConsumerOffsetRequestHea
 import org.apache.rocketmq.remoting.exception.RemotingException;
 
 /**
+ * Consumer 集群模式下，使用远程 Broker 消费进度
  * Remote storage implementation
  */
 public class RemoteBrokerOffsetStore implements OffsetStore {
@@ -51,6 +52,9 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
         this.groupName = groupName;
     }
 
+    /**
+     * 不进行加载，实际读取消费进度时，从 Broker 获取
+     */
     @Override
     public void load() {
     }
@@ -88,6 +92,7 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
                 }
                 case READ_FROM_STORE: {
                     try {
+                        // 从 Broker 读取消费进度
                         long brokerOffset = this.fetchConsumeOffsetFromBroker(mq);
                         AtomicLong offset = new AtomicLong(brokerOffset);
                         this.updateOffset(mq, offset.get(), false);
@@ -111,12 +116,16 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
         return -1;
     }
 
+    /**
+     * 持久化指定消息队列数组的消费进度到 Broker，并移除非指定消息队列
+     * @param mqs
+     */
     @Override
     public void persistAll(Set<MessageQueue> mqs) {
         if (null == mqs || mqs.isEmpty())
             return;
 
-        // 持久化消息队列
+        // 未使用的消息队列（移除）
         final HashSet<MessageQueue> unusedMQ = new HashSet<MessageQueue>();
 
         for (Map.Entry<MessageQueue, AtomicLong> entry : this.offsetTable.entrySet()) {
@@ -125,6 +134,7 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
             if (offset != null) {
                 if (mqs.contains(mq)) {
                     try {
+                        // 1. 更新消费进度到 Broker
                         this.updateConsumeOffsetToBroker(mq, offset.get());
                         log.info("[persistAll] Group: {} ClientId: {} updateConsumeOffsetToBroker {} {}",
                             this.groupName,
@@ -140,7 +150,7 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
             }
         }
 
-        // 移除不适用的消息队列
+        // 2. 移除不适用的消息队列
         if (!unusedMQ.isEmpty()) {
             for (MessageQueue mq : unusedMQ) {
                 this.offsetTable.remove(mq);
@@ -188,19 +198,23 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
     }
 
     /**
+     * 更新消费进度到 Broker
      * Update the Consumer Offset in one way, once the Master is off, updated to Slave, here need to be optimized.
      */
     private void updateConsumeOffsetToBroker(MessageQueue mq, long offset) throws RemotingException,
         MQBrokerException, InterruptedException, MQClientException {
+
         updateConsumeOffsetToBroker(mq, offset, true);
     }
 
     /**
+     * 同步更新消费进度，一旦 Master 关闭，切换到 Slave
      * Update the Consumer Offset synchronously, once the Master is off, updated to Slave, here need to be optimized.
      */
     @Override
     public void updateConsumeOffsetToBroker(MessageQueue mq, long offset, boolean isOneway) throws RemotingException,
         MQBrokerException, InterruptedException, MQClientException {
+        // 1. 获取 Master 的 Broker 信息
         FindBrokerResult findBrokerResult = this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(), MixAll.MASTER_ID, true);
         if (null == findBrokerResult) {
             this.mQClientFactory.updateTopicRouteInfoFromNameServer(mq.getTopic());
@@ -208,6 +222,7 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
         }
 
         if (findBrokerResult != null) {
+            // 2. 构建更新消费进度请求
             UpdateConsumerOffsetRequestHeader requestHeader = new UpdateConsumerOffsetRequestHeader();
             requestHeader.setTopic(mq.getTopic());
             requestHeader.setConsumerGroup(this.groupName);
@@ -215,6 +230,7 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
             requestHeader.setCommitOffset(offset);
 
             if (isOneway) {
+                // 3. 向 Broker 发送请求更新 Broker 消费进度
                 this.mQClientFactory.getMQClientAPIImpl().updateConsumerOffsetOneway(
                     findBrokerResult.getBrokerAddr(), requestHeader, 1000 * 5);
             } else {

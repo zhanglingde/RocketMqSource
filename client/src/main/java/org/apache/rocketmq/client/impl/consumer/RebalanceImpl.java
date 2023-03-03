@@ -220,13 +220,13 @@ public abstract class RebalanceImpl {
      * @param isOrder 是否顺序消息
      */
     public void doRebalance(final boolean isOrder) {
-        // key：topic
+        // 1. 获得订阅信息表  topic -> 订阅信息
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
         if (subTable != null) {
             for (final Map.Entry<String, SubscriptionData> entry : subTable.entrySet()) {
                 final String topic = entry.getKey();
                 try {
-                    // 对每个 topic 中的消息队列进行负载均衡处理
+                    // 2. 对每个 topic 中的消息队列进行负载均衡处理
                     this.rebalanceByTopic(topic, isOrder);
                 } catch (Throwable e) {
                     if (!topic.startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
@@ -235,7 +235,7 @@ public abstract class RebalanceImpl {
                 }
             }
         }
-        // 移除未订阅的 topic 对应的消息队列
+        // 3. 移除未订阅的 topic 对应的消息队列
         this.truncateMessageQueueNotMyTopic();
     }
 
@@ -268,7 +268,7 @@ public abstract class RebalanceImpl {
                 break;
             }
             case CLUSTERING: {
-                // 1. 获取 topic 下的 MessageQueue 和所有 ConsumerId
+                // 1. 获取 topic 下的 MessageQueue 和所有 ConsumerId 数组
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
                 List<String> cidAll = this.mQClientFactory.findConsumerIdList(topic, consumerGroup);
                 if (null == mqSet) {
