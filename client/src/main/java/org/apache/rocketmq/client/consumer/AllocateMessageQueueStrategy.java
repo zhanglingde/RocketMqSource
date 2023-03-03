@@ -20,11 +20,15 @@ import java.util.List;
 import org.apache.rocketmq.common.message.MessageQueue;
 
 /**
+ * 消息队列负载均衡策略
+ *
  * Strategy Algorithm for message allocating between consumers
  */
 public interface AllocateMessageQueueStrategy {
 
     /**
+     * 分配队列
+     *
      * Allocating by consumer id
      *
      * @param consumerGroup current consumer group

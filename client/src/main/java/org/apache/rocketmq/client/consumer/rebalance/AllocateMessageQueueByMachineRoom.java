@@ -22,11 +22,14 @@ import java.util.Set;
 import org.apache.rocketmq.common.message.MessageQueue;
 
 /**
+ * 机房哈希队列算法；
+ * 平均分配可消费的 Broker 对应的消息队列
+ *
  * Computer room Hashing queue algorithm, such as Alipay logic room
  */
 public class AllocateMessageQueueByMachineRoom extends AbstractAllocateMessageQueueStrategy {
     /**
-     * 消费者消费brokerName集合
+     * 消费者消费 brokerName 集合
      */
     private Set<String> consumeridcs;
 
@@ -42,7 +45,7 @@ public class AllocateMessageQueueByMachineRoom extends AbstractAllocateMessageQu
         if (currentIndex < 0) {
             return result;
         }
-        // 计算符合当前配置的消费者数组('consumeridcs')对应的消息队列
+        // 计算符合当前配置的消费者数组('consumerIdcs')对应的消息队列
         List<MessageQueue> premqAll = new ArrayList<MessageQueue>();
         for (MessageQueue mq : mqAll) {
             String[] temp = mq.getBrokerName().split("@");
@@ -50,7 +53,7 @@ public class AllocateMessageQueueByMachineRoom extends AbstractAllocateMessageQu
                 premqAll.add(mq);
             }
         }
-        // 平均分配
+        // 平均分配（与 AllocateMessageQueueAveragely 不同的是将多余的结尾部分分配给前 rem 个 Consumer）
         int mod = premqAll.size() / cidAll.size();
         int rem = premqAll.size() % cidAll.size();
         int startIndex = mod * currentIndex;

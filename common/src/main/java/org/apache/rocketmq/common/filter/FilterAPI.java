@@ -36,6 +36,14 @@ public class FilterAPI {
         return simple;
     }
 
+    /**
+     * 根据 topic 和 订阅表达式 创建订阅数据
+     *
+     * @param topic
+     * @param subString
+     * @return
+     * @throws Exception
+     */
     public static SubscriptionData buildSubscriptionData(String topic, String subString) throws Exception {
         SubscriptionData subscriptionData = new SubscriptionData();
         subscriptionData.setTopic(topic);

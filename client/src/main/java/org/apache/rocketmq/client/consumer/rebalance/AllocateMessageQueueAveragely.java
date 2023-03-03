@@ -18,37 +18,41 @@ package org.apache.rocketmq.client.consumer.rebalance;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import org.apache.rocketmq.common.message.MessageQueue;
 
 /**
  * 负载均衡策略为平均策略
- *
- * 如果创建 Topic 的时候，把 Message Queue 数设为 3，当 Consumer 数量为 2 的时候，有一个 Consumer 需要处理 Topic 三分之二的消息，另一个处理三分之一的消息；
- * 当 Consumer 数量为 4 的时候，有一个 Consumer 无法收到消息，其他 3 个 Consumer 各处理 Topic 三分之一的消息。
+ * <p>
+ * 如果创建 Topic 的时候，把 Message Queue 数设为 3
+ * 1. 当 Consumer 数量为 2 的时候，有一个 Consumer 需要处理 Topic 三分之二的消息，另一个处理三分之一的消息；
+ * 2. 当 Consumer 数量为 4 的时候，有一个 Consumer 无法收到消息，其他 3 个 Consumer 各处理 Topic 三分之一的消息。
  * 可见 Message Queue 数量设置过小不利于做负载均衡，通常情况下，应把一个 Topic 的 Message Queue 数设置为 16
  * Average Hashing queue algorithm
  */
 public class AllocateMessageQueueAveragely extends AbstractAllocateMessageQueueStrategy {
 
     @Override
-    public List<MessageQueue> allocate(String consumerGroup, String currentCID, List<MessageQueue> mqAll,
-        List<String> cidAll) {
+    public List<MessageQueue> allocate(String consumerGroup,
+                                       String currentCID,
+                                       List<MessageQueue> mqAll,
+                                       List<String> cidAll) {
 
-        // 校验参数是否正确
+        // 1. 校验参数是否正确
         List<MessageQueue> result = new ArrayList<MessageQueue>();
         if (!check(consumerGroup, currentCID, mqAll, cidAll)) {
             return result;
         }
 
-        // 平均分配
-        int index = cidAll.indexOf(currentCID);  // 第几个consumer。
+        // 2. 平均分配
+        int index = cidAll.indexOf(currentCID);  // 第几个 Consumer。
         int mod = mqAll.size() % cidAll.size();  // 余数，即多少消息队列无法平均分配
         int averageSize =
-            mqAll.size() <= cidAll.size() ? 1 : (mod > 0 && index < mod ? mqAll.size() / cidAll.size()
-                + 1 : mqAll.size() / cidAll.size());
+                mqAll.size() <= cidAll.size() ? 1 :
+                        (mod > 0 && index < mod ? mqAll.size() / cidAll.size() + 1 : mqAll.size() / cidAll.size());
         // 有余数的情况下，[0, mod) 平分余数，即每consumer多分配一个节点；第index开始，跳过前mod余数
         int startIndex = (mod > 0 && index < mod) ? index * averageSize : index * averageSize + mod;
-        // 分配队列数量。之所以要Math.min()的原因是，mqAll.size() <= cidAll.size()，部分consumer分配不到消息队列
+        // 分配队列数量。之所以要 Math.min() 的原因是，mqAll.size() <= cidAll.size()，部分 consumer 分配不到消息队列（3 个 MessageQueue,4 个 Consumer,有一个消费者分配不到 MessageQueue）
         int range = Math.min(averageSize, mqAll.size() - startIndex);
         for (int i = 0; i < range; i++) {
             result.add(mqAll.get((startIndex + i) % mqAll.size()));

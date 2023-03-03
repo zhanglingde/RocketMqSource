@@ -226,7 +226,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         // 设置队列最后拉取消息时间
         pullRequest.getProcessQueue().setLastPullTimestamp(System.currentTimeMillis());
 
-        // 判断consumer状态是否运行中。如果不是，则延迟拉取消息
+        // 判断 consumer 状态是否运行中。如果不是，则延迟拉取消息
         try {
             this.makeSureStateOK();
         } catch (MQClientException e) {
@@ -309,7 +309,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             }
         }
 
-        // 获取Topic 对应的订阅信息。若不存在，则延迟拉取消息
+        // 获取 Topic 对应的订阅信息。若不存在，则延迟拉取消息
         final SubscriptionData subscriptionData = this.rebalanceImpl.getSubscriptionInner().get(pullRequest.getMessageQueue().getTopic());
         if (null == subscriptionData) {
             this.executePullRequestLater(pullRequest, pullTimeDelayMillsWhenException);
@@ -445,7 +445,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             }
         }
 
-        // 计算请求的 订阅表达式 和 是否进行filtersrv过滤消息
+        // 计算请求的 订阅表达式 和 是否进行 filtersrv 过滤消息
         String subExpression = null;
         boolean classFilter = false;
         SubscriptionData sd = this.rebalanceImpl.getSubscriptionInner().get(pullRequest.getMessageQueue().getTopic());
@@ -927,7 +927,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             // 创建订阅数据
             SubscriptionData subscriptionData = FilterAPI.buildSubscriptionData(topic, subExpression);
             this.rebalanceImpl.getSubscriptionInner().put(topic, subscriptionData);
-            // 通过心跳同步Consumer信息到Broker
+            // 通过心跳同步 Consumer 信息到 Broker
             if (this.mQClientFactory != null) {
                 this.mQClientFactory.sendHeartbeatToAllBrokerWithLock();
             }

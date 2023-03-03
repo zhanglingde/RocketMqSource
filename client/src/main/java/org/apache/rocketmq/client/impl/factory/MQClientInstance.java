@@ -86,8 +86,9 @@ import org.apache.rocketmq.remoting.netty.NettyClientConfig;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 
 /**
- * 客户端各种类型的Consumer和Producer的底层类
- * 首先从NameServer获取并保存各种配置信息，比如Topic的Route信息。同时MQClientInstance还会通过MQClientAPIImpl类实现消息的收发，也就是从Broker获取消息或者发送消息到Broker
+ * 客户端各种类型的 Consumer 和 Producer 的底层类
+ * 首先从 NameServer 获取并保存各种配置信息，比如 Topic 的 Route 信息。
+ * 同时 MQClientInstance 还会通过 MQClientAPIImpl 类实现消息的收发，也就是从 Broker 获取消息或者发送消息到 Broker
  *
  * 普通情况下，一个Java 程序或 JVM 进程只要有一个 MQClientInstance 实例就够了；一个或多个 Consumer 或 Producer 底层使用同一个 MQClientInstance
  */
@@ -112,7 +113,7 @@ public class MQClientInstance {
     private final Lock lockNamesrv = new ReentrantLock();
     private final Lock lockHeartbeat = new ReentrantLock();
     /**
-     * Broker名字 和 Broker地址相关 Map
+     * Broker 名字 和 Broker 地址相关 Map
      */
     private final ConcurrentMap<String/* Broker Name */, HashMap<Long/* brokerId */, String/* address */>> brokerAddrTable =
         new ConcurrentHashMap<String, HashMap<Long, String>>();
@@ -1007,7 +1008,7 @@ public class MQClientInstance {
     }
 
     /**
-     * 获得Broker信息
+     * 获得 Broker 信息
      *
      * @param brokerName broker名字
      * @param brokerId broker编号
@@ -1023,7 +1024,7 @@ public class MQClientInstance {
         boolean slave = false;
         boolean found = false;
 
-        // 获得Broker信息
+        // 获得 Broker 信息
         HashMap<Long/* brokerId */, String/* address */> map = this.brokerAddrTable.get(brokerName);
         if (map != null && !map.isEmpty()) {
             brokerAddr = map.get(brokerId);
@@ -1044,7 +1045,7 @@ public class MQClientInstance {
             }
         }
 
-        // 找到broker，则返回信息
+        // 找到 broker，则返回信息
         if (found) {
             return new FindBrokerResult(brokerAddr, slave, findBrokerVersion(brokerName, brokerAddr));
         }

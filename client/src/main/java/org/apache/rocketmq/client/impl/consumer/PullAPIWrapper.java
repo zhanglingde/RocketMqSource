@@ -190,21 +190,20 @@ public class PullAPIWrapper {
      * @throws MQBrokerException 当 broker 发生异常时。只有通讯模式为同步时才会发生该异常
      * @throws InterruptedException 当发生中断时
      */
-    public PullResult pullKernelImpl(
-        final MessageQueue mq,
-        final String subExpression,
-        final String expressionType,
-        final long subVersion,
-        final long offset,
-        final int maxNums,
-        final int sysFlag,
-        final long commitOffset,
-        final long brokerSuspendMaxTimeMillis,
-        final long timeoutMillis,
-        final CommunicationMode communicationMode,
-        final PullCallback pullCallback
-    ) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
-        // 获取Broker信息
+    public PullResult pullKernelImpl(final MessageQueue mq,
+                                     final String subExpression,
+                                     final String expressionType,
+                                     final long subVersion,
+                                     final long offset,
+                                     final int maxNums,
+                                     final int sysFlag,
+                                     final long commitOffset,
+                                     final long brokerSuspendMaxTimeMillis,
+                                     final long timeoutMillis,
+                                     final CommunicationMode communicationMode,
+                                     final PullCallback pullCallback) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
+
+        // 1. 获取 Broker 信息
         FindBrokerResult findBrokerResult =
             this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(),
                 this.recalculatePullFromWhichNode(mq), false);
@@ -215,7 +214,7 @@ public class PullAPIWrapper {
                     this.recalculatePullFromWhichNode(mq), false);
         }
 
-        // 请求拉取消息
+        // 2. 请求拉取消息
         if (findBrokerResult != null) {
             {
                 // check version
@@ -248,7 +247,7 @@ public class PullAPIWrapper {
             if (PullSysFlag.hasClassFilterFlag(sysFlagInner)) {
                 brokerAddr = computePullFromWhichFilterServer(mq.getTopic(), brokerAddr);
             }
-
+            // 执行拉取消息
             PullResult pullResult = this.mQClientFactory.getMQClientAPIImpl().pullMessage(
                 brokerAddr,
                 requestHeader,
