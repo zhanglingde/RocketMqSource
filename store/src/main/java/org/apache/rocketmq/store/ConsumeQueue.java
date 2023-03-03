@@ -493,8 +493,8 @@ public class ConsumeQueue {
      * @param cqOffset 队列位置
      * @return 是否成功
      */
-    private boolean putMessagePositionInfo(final long offset, final int size, final long tagsCode,
-        final long cqOffset) {
+    private boolean putMessagePositionInfo(final long offset, final int size, final long tagsCode, final long cqOffset) {
+
         // 如果已经重放过，直接返回成功（CommitLog 消息重放到 ConsumerQueue 最大的 CommitLog 存储位置，表示已经重放过 ）
         if (offset + size <= this.maxPhysicOffset) {
             log.warn("Maybe try to build consume queue repeatedly maxPhysicOffset={} phyOffset={}", maxPhysicOffset, offset);

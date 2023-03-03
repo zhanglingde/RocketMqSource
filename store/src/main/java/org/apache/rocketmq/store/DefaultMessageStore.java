@@ -2108,7 +2108,7 @@ public class DefaultMessageStore implements MessageStore {
 
     /**
      * 重放消息线程服务
-     * 1. 该服务不断生成 消息位置信息到消费队列（ConsumerQueue）
+     * 1. 该服务不断生成 消息位置信息到消费队列（ConsumeQueue）
      * 2. 该服务不断生成消息索引到索引文件（IndexFile）
      */
     class ReputMessageService extends ServiceThread {
@@ -2153,7 +2153,7 @@ public class DefaultMessageStore implements MessageStore {
         }
 
         /**
-         * 是否commitLog需要重放消息
+         * 是否 commitLog 需要重放消息
          * @return
          */
         private boolean isCommitLogAvailable() {
@@ -2166,6 +2166,7 @@ public class DefaultMessageStore implements MessageStore {
                     this.reputFromOffset, DefaultMessageStore.this.commitLog.getMinOffset());
                 this.reputFromOffset = DefaultMessageStore.this.commitLog.getMinOffset();
             }
+            // 1. CommitLog 中有数据执行写入 ConsumeQueue 操作
             for (boolean doNext = true; this.isCommitLogAvailable() && doNext; ) {
 
                 if (DefaultMessageStore.this.getMessageStoreConfig().isDuplicationEnable()
@@ -2173,30 +2174,30 @@ public class DefaultMessageStore implements MessageStore {
                     break;
                 }
 
-                // 获取从 reputFromOffset 开始的 commitLog 对应的 MappeFile 对应的 MappedByteBuffer
+                // 2. 获取从 reputFromOffset 开始的 commitLog 对应的 MappedFile 对应的 MappedByteBuffer
                 SelectMappedBufferResult result = DefaultMessageStore.this.commitLog.getData(reputFromOffset);
                 if (result != null) {
                     try {
                         this.reputFromOffset = result.getStartOffset();
                         // 遍历 MappedByteBuffer
                         for (int readSize = 0; readSize < result.getSize() && doNext; ) {
-                            // 生成重放消息重放调度请求
+                            // 3. 生成重放消息重放调度请求
                             DispatchRequest dispatchRequest =
                                 DefaultMessageStore.this.commitLog.checkMessageAndReturnSize(result.getByteBuffer(), false, false);
                             // 消息长度
                             int size = dispatchRequest.getBufferSize() == -1 ? dispatchRequest.getMsgSize() : dispatchRequest.getBufferSize();
 
-                            // 根据请求的结果处理
-                            if (dispatchRequest.isSuccess()) {
+                            if (dispatchRequest.isSuccess()) {   // 根据请求的结果处理
                                 // 读取成功
                                 if (size > 0) {
-                                    // 读取 Message
+                                    // 4. 读取 Message（写入到 ConsumeQueue 和 IndexFile）
                                     DefaultMessageStore.this.doDispatch(dispatchRequest);
                                     // Broker 是 MASTER 节点 && Broker 开启长轮询
-                                    // 通知消费队列有新消息
+                                    // 5. 通知消费队列有新消息
                                     if (BrokerRole.SLAVE != DefaultMessageStore.this.getMessageStoreConfig().getBrokerRole()
                                             && DefaultMessageStore.this.brokerConfig.isLongPollingEnable()
                                             && DefaultMessageStore.this.messageArrivingListener != null) {
+
                                         DefaultMessageStore.this.messageArrivingListener.arriving(dispatchRequest.getTopic(),
                                             dispatchRequest.getQueueId(), dispatchRequest.getConsumeQueueOffset() + 1,
                                             dispatchRequest.getTagsCode(), dispatchRequest.getStoreTimestamp(),
@@ -2282,8 +2283,8 @@ public class DefaultMessageStore implements MessageStore {
 
         @Override
         public void run() {
-            DefaultMessageStore.log.info(this.getServiceName() + " service started");
 
+            DefaultMessageStore.log.info(this.getServiceName() + " service started");
             while (!this.isStopped()) {
                 try {
                     Thread.sleep(1);
