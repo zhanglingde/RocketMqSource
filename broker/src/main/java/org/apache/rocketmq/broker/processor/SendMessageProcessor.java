@@ -97,16 +97,16 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             case RequestCode.CONSUMER_SEND_MSG_BACK:
                 return this.asyncConsumerSendMsgBack(ctx, request);
             default:
-                // 解析请求
+                // 1. 解析请求
                 SendMessageRequestHeader requestHeader = parseRequestHeader(request);
                 if (requestHeader == null) {
                     return CompletableFuture.completedFuture(null);
                 }
-                // 构建发送请求 Context （hook 场景下使用）
+                // 2. 构建发送请求 Context （hook 场景下使用）
                 mqtraceContext = buildMsgContext(ctx, requestHeader);
                 // hook：处理发送消息前逻辑
                 this.executeSendMessageHookBefore(ctx, request, mqtraceContext);
-                // 处理发送消息逻辑
+                // 3. 处理发送消息逻辑
                 if (requestHeader.isBatch()) {
                     return this.asyncSendBatchMessage(ctx, request, mqtraceContext, requestHeader);
                 } else {

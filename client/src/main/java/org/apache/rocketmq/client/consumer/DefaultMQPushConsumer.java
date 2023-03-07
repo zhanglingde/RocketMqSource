@@ -526,6 +526,10 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
         return consumeFromWhere;
     }
 
+    /**
+     * 设置从哪儿开始消费消息
+     * @param consumeFromWhere
+     */
     public void setConsumeFromWhere(ConsumeFromWhere consumeFromWhere) {
         this.consumeFromWhere = consumeFromWhere;
     }
