@@ -617,14 +617,14 @@ public class DefaultMessageStore implements MessageStore {
 
         final long maxOffsetPy = this.commitLog.getMaxOffset();
 
-        // 获取消费队列
+        // 1. 获取消费队列
         ConsumeQueue consumeQueue = findConsumeQueue(topic, queueId);
         if (consumeQueue != null) {
             // 消费队列 最小队列编号 和 最大队列编号
             minOffset = consumeQueue.getMinOffsetInQueue();
             maxOffset = consumeQueue.getMaxOffsetInQueue();
 
-            // 判断 队列位置(offset)
+            // 2. 判断队列位置(offset)
             if (maxOffset == 0) {
                 // 消费队列无消息
                 status = GetMessageStatus.NO_MESSAGE_IN_QUEUE;
@@ -642,7 +642,7 @@ public class DefaultMessageStore implements MessageStore {
                 status = GetMessageStatus.OFFSET_OVERFLOW_BADLY;
                 nextBeginOffset = nextOffsetCorrection(offset, maxOffset);
             } else {
-                // 根据 消费队列位置(offset) 获取 对应的MappedFile
+                // 3. 根据 消费队列位置(offset) 获取对应的 MappedFile
                 SelectMappedBufferResult bufferConsumeQueue = consumeQueue.getIndexBuffer(offset);
                 if (bufferConsumeQueue != null) {
                     try {
@@ -650,7 +650,7 @@ public class DefaultMessageStore implements MessageStore {
 
                         // commitLog下一个文件(MappedFile)对应的开始offset。
                         long nextPhyFileStartOffset = Long.MIN_VALUE;
-                        // 消息物理位置拉取到的最大offset
+                        // 消息物理位置拉取到的最大 offset
                         long maxPhyOffsetPulling = 0;
 
                         int i = 0;
@@ -662,11 +662,11 @@ public class DefaultMessageStore implements MessageStore {
                         ConsumeQueueExt.CqExtUnit cqExtUnit = new ConsumeQueueExt.CqExtUnit();
                         // 循环获取 消息位置信息
                         for (; i < bufferConsumeQueue.getSize() && i < maxFilterMessageCount; i += ConsumeQueue.CQ_STORE_UNIT_SIZE) {
-                            // 消息物理位置offset
+                            // 消息物理位置 offset
                             long offsetPy = bufferConsumeQueue.getByteBuffer().getLong();
                             // 消息长度
                             int sizePy = bufferConsumeQueue.getByteBuffer().getInt();
-                            // 消息tagsCode
+                            // 消息 tagsCode
                             long tagsCode = bufferConsumeQueue.getByteBuffer().getLong();
                             // 设置消息物理位置拉取到的最大offset
                             maxPhyOffsetPulling = offsetPy;
@@ -709,7 +709,7 @@ public class DefaultMessageStore implements MessageStore {
                                 continue;
                             }
 
-                            // 从 commitLog 获取对应消息ByteBuffer
+                            // 从 commitLog 获取对应消息 ByteBuffer
                             SelectMappedBufferResult selectResult = this.commitLog.getMessage(offsetPy, sizePy);
                             if (null == selectResult) {
                                 // 获取消息 MappedByteBuffer 失败，从 CommitLog 无法读取到消息，说明该消息对应的文件（MappedFile）已经删除；
@@ -2035,6 +2035,7 @@ public class DefaultMessageStore implements MessageStore {
         private long lastFlushTimestamp = 0;
 
         private void doFlush(int retryTimes) {
+            // 刷新 ConsumeQueue 时需要刷新多少页
             int flushConsumeQueueLeastPages = DefaultMessageStore.this.getMessageStoreConfig().getFlushConsumeQueueLeastPages();
 
             // 进行强制 flush（主要用于 shutdown 时）
@@ -2083,6 +2084,7 @@ public class DefaultMessageStore implements MessageStore {
             while (!this.isStopped()) {
                 try {
                     int interval = DefaultMessageStore.this.getMessageStoreConfig().getFlushIntervalConsumeQueue();
+                    // 等待 1000ms 后执行 flush
                     this.waitForRunning(interval);
                     this.doFlush(1);
                 } catch (Exception e) {

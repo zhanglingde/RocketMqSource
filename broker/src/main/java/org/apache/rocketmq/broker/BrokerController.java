@@ -358,6 +358,7 @@ public class BrokerController {
                 }
             }, initialDelay, period, TimeUnit.MILLISECONDS);
 
+            // 定时更新消费进度（每 5s 执行一次）
             this.scheduledExecutorService.scheduleAtFixedRate(() -> {
                 try {
                     BrokerController.this.consumerOffsetManager.persist();

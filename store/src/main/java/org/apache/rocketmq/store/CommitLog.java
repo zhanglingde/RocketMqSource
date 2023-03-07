@@ -970,9 +970,12 @@ public class CommitLog {
     }
 
     public SelectMappedBufferResult getMessage(final long offset, final int size) {
+        // 1. 获取 MappedFile 设置的容量 mappedFileSize
         int mappedFileSize = this.defaultMessageStore.getMessageStoreConfig().getMappedFileSizeCommitLog();
+        // 2. MappedFileQueue 根据 offset 获取 MappedFile
         MappedFile mappedFile = this.mappedFileQueue.findMappedFileByOffset(offset, offset == 0);
         if (mappedFile != null) {
+            // 3. 设置 ButeBuffer 中指针位置 (10 % 100 = 10)
             int pos = (int) (offset % mappedFileSize);
             return mappedFile.selectMappedBuffer(pos, size);
         }

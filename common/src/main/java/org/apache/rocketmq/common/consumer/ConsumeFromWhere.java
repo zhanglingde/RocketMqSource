@@ -25,6 +25,9 @@ public enum ConsumeFromWhere {
     CONSUME_FROM_MIN_OFFSET,
     @Deprecated
     CONSUME_FROM_MAX_OFFSET,
+    /**
+     * 设置从最小的 Offset 开始读取
+     */
     CONSUME_FROM_FIRST_OFFSET,
     CONSUME_FROM_TIMESTAMP,
 }
