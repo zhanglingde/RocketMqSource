@@ -198,9 +198,15 @@ public class IndexService {
         return topic + "#" + key;
     }
 
+    /**
+     * 建议索引信息到索引文件
+     * @param req
+     */
     public void buildIndex(DispatchRequest req) {
+        // 1. 创建或获取索引文件
         IndexFile indexFile = retryGetAndCreateIndexFile();
         if (indexFile != null) {
+            // 最大存储便移量
             long endPhyOffset = indexFile.getEndPhyOffset();
             DispatchRequest msg = req;
             String topic = msg.getTopic();

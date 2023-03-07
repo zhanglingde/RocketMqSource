@@ -495,7 +495,7 @@ public class ConsumeQueue {
      */
     private boolean putMessagePositionInfo(final long offset, final int size, final long tagsCode, final long cqOffset) {
 
-        // 如果已经重放过，直接返回成功（CommitLog 消息重放到 ConsumerQueue 最大的 CommitLog 存储位置，表示已经重放过 ）
+        // 如果已经重放过，直接返回成功（CommitLog 消息重放到 ConsumeQueue 最大的 CommitLog 存储位置，表示已经重放过 ）
         if (offset + size <= this.maxPhysicOffset) {
             log.warn("Maybe try to build consume queue repeatedly maxPhysicOffset={} phyOffset={}", maxPhysicOffset, offset);
             return true;
@@ -512,7 +512,6 @@ public class ConsumeQueue {
 
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile(expectLogicOffset);
         if (mappedFile != null) {
-
             // 当是 ConsumeQueue 第一个 MappedFile
             // && 队列位置非第一个（重放消息队列位置大于 0）
             // && MappedFile 未写入内容，则填充前置空白占位
@@ -547,9 +546,9 @@ public class ConsumeQueue {
                     );
                 }
             }
-            // 设置 commitLog 重放消息到 ConsumeQueue 的最大位置。
+            // 3.设置 commitLog 重放消息到 ConsumeQueue 的最大位置。
             this.maxPhysicOffset = offset + size;
-            // 插入消息位置到 MappedFile
+            // 4. 插入消息位置到 MappedFile
             return mappedFile.appendMessage(this.byteBufferIndex.array());
         }
         return false;
