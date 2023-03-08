@@ -632,7 +632,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     this.defaultMQPushConsumer.changeInstanceNameToPID();
                 }
 
-                // 初始化 MQClientInstance,并设置好负载均衡策略和 PullAPIWrapper
+                // 1. 初始化 MQClientInstance,并设置好负载均衡策略和 PullAPIWrapper
                 this.mQClientFactory = MQClientManager.getInstance().getOrCreateMQClientInstance(this.defaultMQPushConsumer, this.rpcHook);
 
                 this.rebalanceImpl.setConsumerGroup(this.defaultMQPushConsumer.getConsumerGroup());
@@ -645,7 +645,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                         this.defaultMQPushConsumer.getConsumerGroup(), isUnitMode());
                 this.pullAPIWrapper.registerFilterMessageHook(filterMessageHookList);
 
-                // 确定 OffsetStore（当前消费者所消费的消息在队列中的偏移量）
+                // 2. 确定 OffsetStore（当前消费者所消费的消息在队列中的偏移量）
                 if (this.defaultMQPushConsumer.getOffsetStore() != null) {
                     this.offsetStore = this.defaultMQPushConsumer.getOffsetStore();
                 } else {
@@ -666,7 +666,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 }
                 this.offsetStore.load();
 
-                // 初始化 consumeMessageService，是否是顺序消息使用不同的 Service
+                // 3. 初始化 consumeMessageService，是否是顺序消息使用不同的 Service
                 if (this.getMessageListenerInner() instanceof MessageListenerOrderly) {
                     this.consumeOrderly = true;
                     this.consumeMessageService =
@@ -676,7 +676,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     this.consumeMessageService =
                             new ConsumeMessageConcurrentlyService(this, (MessageListenerConcurrently) this.getMessageListenerInner());
                 }
-
+                // 4. 调用 MQClientInstance#start() 方法，开始获取数据
                 this.consumeMessageService.start();
 
                 boolean registerOK = mQClientFactory.registerConsumer(this.defaultMQPushConsumer.getConsumerGroup(), this);

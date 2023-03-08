@@ -914,8 +914,14 @@ public class CommitLog {
         }
     }
 
+    /**
+     * 提交同步消息请求
+     * @param result
+     * @param messageExt
+     * @return
+     */
     public CompletableFuture<PutMessageStatus> submitReplicaRequest(AppendMessageResult result, MessageExt messageExt) {
-        // 如果是同步 Master，同步到从节点 // TODO 待读：数据同步
+        // 如果是同步 Master，同步到从节点
         if (BrokerRole.SYNC_MASTER == this.defaultMessageStore.getMessageStoreConfig().getBrokerRole()) {
             HAService service = this.defaultMessageStore.getHaService();
             if (messageExt.isWaitStoreMsgOK()) {
@@ -923,7 +929,7 @@ public class CommitLog {
                     GroupCommitRequest request = new GroupCommitRequest(result.getWroteOffset() + result.getWroteBytes(),
                             this.defaultMessageStore.getMessageStoreConfig().getSlaveTimeout());
                     service.putRequest(request);
-                    // 唤醒 WriteSocketService
+                    // 唤醒 WriteSocketService（往 Slave 写数据）
                     service.getWaitNotifyObject().wakeupAll();
                     return request.future();
                 }

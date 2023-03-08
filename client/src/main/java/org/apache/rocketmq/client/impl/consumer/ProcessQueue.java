@@ -38,7 +38,7 @@ import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.protocol.body.ProcessQueueInfo;
 
 /**
- * 在PushConsumer运行的时候，每个Message Queue都会有个对应的ProcessQueue对象，保存了这个Message Queue消息处理状态的快照
+ * 在 PushConsumer 运行的时候，每个 Message Queue 都会有个对应的 ProcessQueue 对象，保存了这个 Message Queue 消息处理状态的快照
  * Queue consumption snapshot
  */
 public class ProcessQueue {

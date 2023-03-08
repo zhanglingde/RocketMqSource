@@ -107,6 +107,7 @@ public class HAService {
     // }
 
     public void start() throws Exception {
+        // 开始监听 Slave 的连接
         this.acceptSocketService.beginAccept();
         this.acceptSocketService.start();
         this.groupTransferService.start();
@@ -418,6 +419,7 @@ public class HAService {
                     int readSize = this.socketChannel.read(this.byteBufferRead);
                     if (readSize > 0) {
                         readSizeZeroTimes = 0;
+                        // 处理读取事件
                         boolean result = this.dispatchReadRequest();
                         if (!result) {
                             log.error("HAClient, dispatchReadRequest error");
@@ -441,7 +443,7 @@ public class HAService {
         }
 
         /**
-         * 读取Master传输的CommitLog数据，并返回是异常
+         * 读取 Master 传输的 CommitLog 数据，并返回是异常
          * 如果读取到异常，写入 CommitLog
          * 异常原因：
          *   1. Master 传输来的数据 offset 不等于 Slave 的 CommitLog 数据最大的 offset
@@ -456,17 +458,16 @@ public class HAService {
                 // 读取到请求
                 int diff = this.byteBufferRead.position() - this.dispatchPosition;
                 if (diff >= msgHeaderSize) {
-                    // 读取masterPhyOffset、bodySize。使用dispatchPostion的原因是：处理数据“粘包”导致数据读取不完整
+                    // 读取 masterPhyOffset、bodySize。使用 dispatchPosition 的原因是：处理数据“粘包”导致数据读取不完整
                     long masterPhyOffset = this.byteBufferRead.getLong(this.dispatchPosition);
                     int bodySize = this.byteBufferRead.getInt(this.dispatchPosition + 8);
 
-                    // 校验 Master传输来的数据offset 是否和 Slave的CommitLog数据最大offset 是否相同
+                    // 校验 Master传输来的数据 offset 是否和 Slave 的 CommitLog 数据最大 offset 是否相同
                     long slavePhyOffset = HAService.this.defaultMessageStore.getMaxPhyOffset();
 
                     if (slavePhyOffset != 0) {
                         if (slavePhyOffset != masterPhyOffset) {
-                            log.error("master pushed offset not equal the max phy offset in slave, SLAVE: "
-                                + slavePhyOffset + " MASTER: " + masterPhyOffset);
+                            log.error("master pushed offset not equal the max phy offset in slave, SLAVE: " + slavePhyOffset + " MASTER: " + masterPhyOffset);
                             return false;
                         }
                     }
@@ -477,12 +478,11 @@ public class HAService {
                         byte[] bodyData = byteBufferRead.array();
                         int dataStart = this.dispatchPosition + msgHeaderSize;
 
-                        HAService.this.defaultMessageStore.appendToCommitLog(
-                                masterPhyOffset, bodyData, dataStart, bodySize);
+                        HAService.this.defaultMessageStore.appendToCommitLog(masterPhyOffset, bodyData, dataStart, bodySize);
 
                         this.dispatchPosition += msgHeaderSize + bodySize;
 
-                        // 上报到Master进度
+                        // 上报到 Master 进度
                         if (!reportSlaveMaxOffsetPlus()) {
                             return false;
                         }
@@ -518,6 +518,11 @@ public class HAService {
             return result;
         }
 
+        /**
+         * Slave 角色连接 Master
+         * @return
+         * @throws ClosedChannelException
+         */
         private boolean connectMaster() throws ClosedChannelException {
             if (null == socketChannel) {
                 String addr = this.masterAddress.get();
@@ -571,11 +576,13 @@ public class HAService {
         public void run() {
             log.info(this.getServiceName() + " service started");
 
+            // 不断循环，比对 Master 和 Slave 的 offset 是否有变化
             while (!this.isStopped()) {
                 try {
+                    // 1. Slave 角色连接 Master
                     if (this.connectMaster()) {
 
-                        // 若到满足上报间隔，上报到 Master 进度
+                        // 2. 若到满足上报间隔，上报到 Master 进度
                         if (this.isTimeToReportOffset()) {
                             boolean result = this.reportSlaveMaxOffset(this.currentReportedOffset);
                             if (!result) {
@@ -586,24 +593,22 @@ public class HAService {
 
                         this.selector.select(1000);
 
-                        // 处理读取事件
+                        // 3. 处理读取事件（Master 的 CommitLog 写入 Slave 的 CommitLog）
                         boolean ok = this.processReadEvent();
                         if (!ok) {
                             this.closeMaster();
                             continue;
                         }
 
-                        // 若进度有变化，上报到Master进度
+                        // 3. 若进度有变化，上报到 Master 进度
                         if (!reportSlaveMaxOffsetPlus()) {
                             continue;
                         }
 
                         // Master 过久未返回数据，关闭连接
                         long interval = HAService.this.getDefaultMessageStore().getSystemClock().now() - this.lastWriteTimestamp;
-                        if (interval > HAService.this.getDefaultMessageStore().getMessageStoreConfig()
-                            .getHaHousekeepingInterval()) {
-                            log.warn("HAClient, housekeeping, found this connection[" + this.masterAddress
-                                + "] expired, " + interval);
+                        if (interval > HAService.this.getDefaultMessageStore().getMessageStoreConfig().getHaHousekeepingInterval()) {
+                            log.warn("HAClient, housekeeping, found this connection[" + this.masterAddress + "] expired, " + interval);
                             this.closeMaster();
                             log.warn("HAClient, master not response some time, so close connection");
                         }
