@@ -16,22 +16,31 @@
  */
 package org.apache.rocketmq.client.consumer.listener;
 
+/**
+ * 顺序消费消息结果
+ *
+ * ROLLBACK 、COMMIT 暂时只使用在 MySQL binlog 场景，官方将这两状态标记为 @Deprecated。相应的实现逻辑依然保留
+ */
 public enum ConsumeOrderlyStatus {
     /**
+     * 消费成功但不提交
      * Success consumption
      */
     SUCCESS,
     /**
+     * 消费失败，消费回滚
      * Rollback consumption(only for binlog consumption)
      */
     @Deprecated
     ROLLBACK,
     /**
+     * 消费成功提交并且提交
      * Commit offset(only for binlog consumption)
      */
     @Deprecated
     COMMIT,
     /**
+     * 消费失败，挂起消费队列一会会，稍后继续消费
      * Suspend current queue a moment
      */
     SUSPEND_CURRENT_QUEUE_A_MOMENT;

@@ -81,15 +81,25 @@ public class RebalancePushImpl extends RebalanceImpl {
         this.getmQClientFactory().sendHeartbeatToAllBrokerWithLock();
     }
 
+    /**
+     * 移除不需要的队列相关的信息
+     * 1. 持久化消费进度，并移除之
+     * 2. 顺序消费&集群模式，解锁对该队列的锁定
+     *
+     * @param mq
+     * @param pq 消息处理队列
+     * @return 是否移除成功
+     */
     @Override
     public boolean removeUnnecessaryMessageQueue(MessageQueue mq, ProcessQueue pq) {
         // 同步队列的消费进度，并移除之。
         this.defaultMQPushConsumerImpl.getOffsetStore().persist(mq);
         this.defaultMQPushConsumerImpl.getOffsetStore().removeOffset(mq);
-        // TODO 顺序消费
+        // 集群模式下，顺序消费移除时，解锁对队列的锁定
         if (this.defaultMQPushConsumerImpl.isConsumeOrderly()
             && MessageModel.CLUSTERING.equals(this.defaultMQPushConsumerImpl.messageModel())) {
             try {
+                // 尝试获取锁，获取到锁再移除消息队列（避免和消息队列消费冲突，如果获取锁失败，等待下次重新分配队列时再进行移除）
                 if (pq.getConsumeLock().tryLock(1000, TimeUnit.MILLISECONDS)) {
                     try {
                         return this.unlockDelay(mq, pq);
@@ -112,9 +122,18 @@ public class RebalancePushImpl extends RebalanceImpl {
         return true;
     }
 
+    /**
+     * 延迟解锁 Broker 消息队列锁
+     * 当消息处理队列不存在消息，则直接解锁
+     *
+     * @param mq
+     * @param pq 消息处理队列
+     * @return 是否解锁成功
+     */
     private boolean unlockDelay(final MessageQueue mq, final ProcessQueue pq) {
 
         if (pq.hasTempMessage()) {
+            // 如果消息队列存在剩余消息，则延迟解锁 Broker 消息队列锁
             log.info("[{}]unlockDelay, begin {} ", mq.hashCode(), mq);
             this.defaultMQPushConsumerImpl.getmQClientFactory().getScheduledExecutorService().schedule(new Runnable() {
                 @Override

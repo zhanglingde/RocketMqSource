@@ -131,6 +131,11 @@ public abstract class RebalanceImpl {
         return result;
     }
 
+    /**
+     * 请求 Broker 获得指定消息队列的分布式锁（如果锁定失败，则更新失败，即该消息队列不属于自己，不能进行消费）
+     * @param mq
+     * @return 是否锁定成功
+     */
     public boolean lock(final MessageQueue mq) {
         FindBrokerResult findBrokerResult = this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(), MixAll.MASTER_ID, true);
         if (findBrokerResult != null) {
@@ -140,8 +145,11 @@ public abstract class RebalanceImpl {
             requestBody.getMqSet().add(mq);
 
             try {
+                // 请求 Broker 获得指定消息队列的分布式锁
                 Set<MessageQueue> lockedMq =
                         this.mQClientFactory.getMQClientAPIImpl().lockBatchMQ(findBrokerResult.getBrokerAddr(), requestBody, 1000);
+
+                // 设置消息处理队列锁定成功。锁定消息队列成功，可能本地没有消息处理队列，设置锁定成功会在lockAll()方法
                 for (MessageQueue mmqq : lockedMq) {
                     ProcessQueue processQueue = this.processQueueTable.get(mmqq);
                     if (processQueue != null) {
@@ -151,10 +159,7 @@ public abstract class RebalanceImpl {
                 }
 
                 boolean lockOK = lockedMq.contains(mq);
-                log.info("the message queue lock {}, {} {}",
-                        lockOK ? "OK" : "Failed",
-                        this.consumerGroup,
-                        mq);
+                log.info("the message queue lock {}, {} {}", lockOK ? "OK" : "Failed", this.consumerGroup, mq);
                 return lockOK;
             } catch (Exception e) {
                 log.error("lockBatchMQ exception, " + mq, e);
@@ -361,7 +366,7 @@ public abstract class RebalanceImpl {
                                                        final boolean isOrder) {
         boolean changed = false;
 
-        // 移除 在 processQueueTable && 不存在于 mqSet 里的消息队列
+        // 1. 移除 在 processQueueTable && 不存在于 mqSet 里的消息队列（顺序消息解锁）
         Iterator<Entry<MessageQueue, ProcessQueue>> it = this.processQueueTable.entrySet().iterator();
         while (it.hasNext()) {
             Entry<MessageQueue, ProcessQueue> next = it.next();
@@ -398,11 +403,11 @@ public abstract class RebalanceImpl {
             }
         }
 
-        // 增加不在 processQueueTable && 存在于 mqSet 里的消息队列。
+        // 2. 增加不在 processQueueTable && 存在于 mqSet 里的消息队列（顺序消息加锁）
         List<PullRequest> pullRequestList = new ArrayList<PullRequest>();   // 拉消息请求数组
         for (MessageQueue mq : mqSet) {
             if (!this.processQueueTable.containsKey(mq)) {
-                if (isOrder && !this.lock(mq)) {
+                if (isOrder && !this.lock(mq)) {    // 队列负载均衡时，如果是顺序消息，加锁消息队列
                     log.warn("doRebalance, {}, add a new mq failed, {}, because lock failed", consumerGroup, mq);
                     continue;
                 }
@@ -438,7 +443,7 @@ public abstract class RebalanceImpl {
             }
         }
 
-        // 发起消息拉取请求
+        // 3. 发起消息拉取请求
         this.dispatchPullRequest(pullRequestList);
 
         return changed;
