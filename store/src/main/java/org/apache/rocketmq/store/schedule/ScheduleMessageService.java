@@ -61,11 +61,9 @@ public class ScheduleMessageService extends ConfigManager {
     private static final long WAIT_FOR_SHUTDOWN = 5000L;
     private static final long DELAY_FOR_A_SLEEP = 10L;
 
-    private final ConcurrentMap<Integer /* level */, Long/* delay timeMillis */> delayLevelTable =
-        new ConcurrentHashMap<Integer, Long>(32);
+    private final ConcurrentMap<Integer /* level */, Long/* delay timeMillis */> delayLevelTable = new ConcurrentHashMap<Integer, Long>(32);
 
-    private final ConcurrentMap<Integer /* level */, Long/* offset */> offsetTable =
-        new ConcurrentHashMap<Integer, Long>(32);
+    private final ConcurrentMap<Integer /* level */, Long/* offset */> offsetTable = new ConcurrentHashMap<Integer, Long>(32);
     private final DefaultMessageStore defaultMessageStore;
     private final AtomicBoolean started = new AtomicBoolean(false);
     private ScheduledExecutorService deliverExecutorService;
@@ -267,8 +265,7 @@ public class ScheduleMessageService extends ConfigManager {
 
     @Override
     public String configFilePath() {
-        return StorePathConfigHelper.getDelayOffsetStorePath(this.defaultMessageStore.getMessageStoreConfig()
-            .getStorePathRootDir());
+        return StorePathConfigHelper.getDelayOffsetStorePath(this.defaultMessageStore.getMessageStoreConfig().getStorePathRootDir());
     }
 
     @Override
@@ -330,7 +327,7 @@ public class ScheduleMessageService extends ConfigManager {
     }
 
     /**
-     * 设置消息内容
+     * 构建原有消息对象
      *
      * @param msgExt 消息
      * @return 消息
@@ -342,8 +339,7 @@ public class ScheduleMessageService extends ConfigManager {
         MessageAccessor.setProperties(msgInner, msgExt.getProperties());
 
         TopicFilterType topicFilterType = MessageExt.parseTopicFilterType(msgInner.getSysFlag());
-        long tagsCodeValue =
-            MessageExtBrokerInner.tagsString2tagsCode(topicFilterType, msgInner.getTags());
+        long tagsCodeValue = MessageExtBrokerInner.tagsString2tagsCode(topicFilterType, msgInner.getTags());
         msgInner.setTagsCode(tagsCodeValue);
         msgInner.setPropertiesString(MessageDecoder.messageProperties2String(msgExt.getProperties()));
 
@@ -355,9 +351,9 @@ public class ScheduleMessageService extends ConfigManager {
 
         msgInner.setWaitStoreMsgOK(false);
         MessageAccessor.clearProperty(msgInner, MessageConst.PROPERTY_DELAY_TIME_LEVEL);
-
+        // 还原回原有的 topic（REAL_TOPIC）
         msgInner.setTopic(msgInner.getProperty(MessageConst.PROPERTY_REAL_TOPIC));
-
+        // 还原回原有的 queueId（REAL_QID）
         String queueIdStr = msgInner.getProperty(MessageConst.PROPERTY_REAL_QUEUE_ID);
         int queueId = Integer.parseInt(queueIdStr);
         msgInner.setQueueId(queueId);
@@ -416,25 +412,28 @@ public class ScheduleMessageService extends ConfigManager {
             return result;
         }
 
+        /**
+         * 执行定时任务，判断是否有消息到达消费时间需要进行发送
+         */
         public void executeOnTimeup() {
+            // 1. 获取 SCHEDULE_TOPIC_XXXX topic 下对应延迟级别的 ConsumeQueue
             ConsumeQueue cq =
-                ScheduleMessageService.this.defaultMessageStore.findConsumeQueue(TopicValidator.RMQ_SYS_SCHEDULE_TOPIC,
-                    delayLevel2QueueId(delayLevel));
+                ScheduleMessageService.this.defaultMessageStore.findConsumeQueue(TopicValidator.RMQ_SYS_SCHEDULE_TOPIC, delayLevel2QueueId(delayLevel));
 
             if (cq == null) {
                 this.scheduleNextTimerTask(this.offset, DELAY_FOR_A_WHILE);
                 return;
             }
-
+            // 2. 根据 offset 从 ConsumeQueue 中获取 ByteBuffer 读取消息
             SelectMappedBufferResult bufferCQ = cq.getIndexBuffer(this.offset);
+            // ConsumeQueue 中未获取到消息，设置下一次消费定时任务
             if (bufferCQ == null) {
                 long resetOffset;
+                // 校验 offset 是否正确，并设置
                 if ((resetOffset = cq.getMinOffsetInQueue()) > this.offset) {
-                    log.error("schedule CQ offset invalid. offset={}, cqMinOffset={}, queueId={}",
-                        this.offset, resetOffset, cq.getQueueId());
+                    log.error("schedule CQ offset invalid. offset={}, cqMinOffset={}, queueId={}", this.offset, resetOffset, cq.getQueueId());
                 } else if ((resetOffset = cq.getMaxOffsetInQueue()) < this.offset) {
-                    log.error("schedule CQ offset invalid. offset={}, cqMaxOffset={}, queueId={}",
-                        this.offset, resetOffset, cq.getQueueId());
+                    log.error("schedule CQ offset invalid. offset={}, cqMaxOffset={}, queueId={}", this.offset, resetOffset, cq.getQueueId());
                 } else {
                     resetOffset = this.offset;
                 }
@@ -452,42 +451,44 @@ public class ScheduleMessageService extends ConfigManager {
                     int sizePy = bufferCQ.getByteBuffer().getInt();
                     long tagsCode = bufferCQ.getByteBuffer().getLong();
 
+                    // 3. 计算 tagsCode（可消费时间戳）
                     if (cq.isExtAddr(tagsCode)) {
                         if (cq.getExt(tagsCode, cqExtUnit)) {
                             tagsCode = cqExtUnit.getTagsCode();
                         } else {
-                            //can't find ext content.So re compute tags code.
-                            log.error("[BUG] can't find consume queue extend file content!addr={}, offsetPy={}, sizePy={}",
-                                tagsCode, offsetPy, sizePy);
+                            //can't find ext content.So re compute tags code. 重新计算 tagsCode
+                            log.error("[BUG] can't find consume queue extend file content!addr={}, offsetPy={}, sizePy={}", tagsCode, offsetPy, sizePy);
                             long msgStoreTime = defaultMessageStore.getCommitLog().pickupStoreTimestamp(offsetPy, sizePy);
                             tagsCode = computeDeliverTimestamp(delayLevel, msgStoreTime);
                         }
                     }
 
                     long now = System.currentTimeMillis();
+                    // 4. 纠正可投递时间（延迟级别对应的时间是可调整的，如级别 3 延迟 10s 调整成 5s 了，可能消息会被立即消费）
                     long deliverTimestamp = this.correctDeliverTimestamp(now, tagsCode);
                     nextOffset = offset + (i / ConsumeQueue.CQ_STORE_UNIT_SIZE);
 
                     long countdown = deliverTimestamp - now;
                     if (countdown > 0) {
+                        // 未到达消息消费时间，设置下一次定时任务（100ms）
                         this.scheduleNextTimerTask(nextOffset, DELAY_FOR_A_WHILE);
                         return;
                     }
 
-                    // 消息到达可发送时间
+                    // 5. 消息到达可发送时间，从 CommitLog 中获取消息
                     MessageExt msgExt = ScheduleMessageService.this.defaultMessageStore.lookMessageByOffset(offsetPy, sizePy);
                     if (msgExt == null) {
                         continue;
                     }
 
-                    // 发送消息
+                    // 6. 构建原有消息对象（还原 topic 和 queueId）
                     MessageExtBrokerInner msgInner = ScheduleMessageService.this.messageTimeup(msgExt);
                     if (TopicValidator.RMQ_SYS_TRANS_HALF_TOPIC.equals(msgInner.getTopic())) {
-                        log.error("[BUG] the real topic of schedule msg is {}, discard the msg. msg={}",
-                            msgInner.getTopic(), msgInner);
+                        log.error("[BUG] the real topic of schedule msg is {}, discard the msg. msg={}", msgInner.getTopic(), msgInner);
                         continue;
                     }
 
+                    // 7. Broker 投递消息到原有消息的 topic 中（和 Product 发送普通消息逻辑类似）
                     boolean deliverSuc;
                     if (ScheduleMessageService.this.enableAsyncDeliver) {
                         deliverSuc = this.asyncDeliver(msgInner, msgExt.getMsgId(), nextOffset, offsetPy, sizePy);
@@ -501,7 +502,7 @@ public class ScheduleMessageService extends ConfigManager {
                         return;
                     }
                 }
-                // 更新进度
+                // 8. 更新进度
                 nextOffset = this.offset + (i / ConsumeQueue.CQ_STORE_UNIT_SIZE);
             } catch (Exception e) {
                 log.error("ScheduleMessageService, messageTimeup execute error, offset = {}", nextOffset, e);
@@ -515,16 +516,16 @@ public class ScheduleMessageService extends ConfigManager {
         /**
          * 安排下一次任务
          *
-         * @param offset
-         * @param delay
+         * @param offset 消息偏移量
+         * @param delay 延迟时间
          */
         public void scheduleNextTimerTask(long offset, long delay) {
             ScheduleMessageService.this.deliverExecutorService.schedule(new DeliverDelayedMessageTimerTask(
                 this.delayLevel, offset), delay, TimeUnit.MILLISECONDS);
         }
 
-        private boolean syncDeliver(MessageExtBrokerInner msgInner, String msgId, long offset, long offsetPy,
-            int sizePy) {
+        private boolean syncDeliver(MessageExtBrokerInner msgInner, String msgId, long offset, long offsetPy, int sizePy) {
+
             PutResultProcess resultProcess = deliverMessage(msgInner, msgId, offset, offsetPy, sizePy, false);
             PutMessageResult result = resultProcess.get();
             boolean sendStatus = result != null && result.getPutMessageStatus() == PutMessageStatus.PUT_OK;
@@ -534,17 +535,15 @@ public class ScheduleMessageService extends ConfigManager {
             return sendStatus;
         }
 
-        private boolean asyncDeliver(MessageExtBrokerInner msgInner, String msgId, long offset, long offsetPy,
-            int sizePy) {
+        private boolean asyncDeliver(MessageExtBrokerInner msgInner, String msgId, long offset, long offsetPy, int sizePy) {
+
             Queue<PutResultProcess> processesQueue = ScheduleMessageService.this.deliverPendingTable.get(this.delayLevel);
 
             //Flow Control
             int currentPendingNum = processesQueue.size();
-            int maxPendingLimit = ScheduleMessageService.this.defaultMessageStore.getMessageStoreConfig()
-                .getScheduleAsyncDeliverMaxPendingLimit();
+            int maxPendingLimit = ScheduleMessageService.this.defaultMessageStore.getMessageStoreConfig().getScheduleAsyncDeliverMaxPendingLimit();
             if (currentPendingNum > maxPendingLimit) {
-                log.warn("Asynchronous deliver triggers flow control, " +
-                    "currentPendingNum={}, maxPendingLimit={}", currentPendingNum, maxPendingLimit);
+                log.warn("Asynchronous deliver triggers flow control, " + "currentPendingNum={}, maxPendingLimit={}", currentPendingNum, maxPendingLimit);
                 return false;
             }
 
@@ -560,10 +559,14 @@ public class ScheduleMessageService extends ConfigManager {
             return true;
         }
 
-        private PutResultProcess deliverMessage(MessageExtBrokerInner msgInner, String msgId, long offset,
-            long offsetPy, int sizePy, boolean autoResend) {
-            CompletableFuture<PutMessageResult> future =
-                ScheduleMessageService.this.writeMessageStore.asyncPutMessage(msgInner);
+        private PutResultProcess deliverMessage(MessageExtBrokerInner msgInner,
+                                                String msgId,
+                                                long offset,
+                                                long offsetPy,
+                                                int sizePy,
+                                                boolean autoResend) {
+
+            CompletableFuture<PutMessageResult> future = ScheduleMessageService.this.writeMessageStore.asyncPutMessage(msgInner);
             return new PutResultProcess()
                 .setTopic(msgInner.getTopic())
                 .setDelayLevel(this.delayLevel)

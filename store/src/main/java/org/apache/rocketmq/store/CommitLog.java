@@ -286,6 +286,10 @@ public class CommitLog {
     }
 
     /**
+     * 定时消息核心代码
+     * 生成 ConsumeQueue 时，每条消息的 tagsCode 使用 「消息计算消费时间」。
+     * 这样 ScheduleMessageService 在轮询 ConsumeQueue 时，可以使用 tagsCode 进行过滤
+     *
      * check the message and returns the message size
      *
      * @return 0 Come the end of the file // >0 Normal messages // -1 Message checksum failure
@@ -380,6 +384,7 @@ public class CommitLog {
 
                 uniqKey = propertiesMap.get(MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX);
 
+                // tagsCode
                 String tags = propertiesMap.get(MessageConst.PROPERTY_TAGS);
                 if (tags != null && tags.length() > 0) {
                     tagsCode = MessageExtBrokerInner.tagsString2tagsCode(MessageExt.parseTopicFilterType(sysFlag), tags);
@@ -396,6 +401,7 @@ public class CommitLog {
                         }
 
                         if (delayLevel > 0) {
+                            // 计算计划消费时间（Broker 发送时间）
                             tagsCode = this.defaultMessageStore.getScheduleMessageService().computeDeliverTimestamp(delayLevel,
                                 storeTimestamp);
                         }
@@ -640,8 +646,7 @@ public class CommitLog {
 
         // 1. 对于延时消息，把消息原始 topic 及 queueId 存入到消息的属性中，然后将当前topic、queueId替换为延时消息固定的topic（SCHEDULE_TOPIC_XXXX）以及根据延时级别计算出来的queueId
         final int tranType = MessageSysFlag.getTransactionValue(msg.getSysFlag());
-        if (tranType == MessageSysFlag.TRANSACTION_NOT_TYPE
-                || tranType == MessageSysFlag.TRANSACTION_COMMIT_TYPE) {
+        if (tranType == MessageSysFlag.TRANSACTION_NOT_TYPE || tranType == MessageSysFlag.TRANSACTION_COMMIT_TYPE) {
             // Delay Delivery
             if (msg.getDelayTimeLevel() > 0) {
                 // 延时消息
