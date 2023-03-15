@@ -29,6 +29,8 @@ public enum ConsumeOrderlyStatus {
     SUCCESS,
     /**
      * 消费失败，消费回滚
+     * ROLLBACK 、COMMIT 暂时只使用在 MySQL binlog 场景，官方将这两状态标记为 @Deprecated。当然，相应的实现逻辑依然保留
+     *
      * Rollback consumption(only for binlog consumption)
      */
     @Deprecated
