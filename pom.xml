@@ -224,6 +224,11 @@
                     <source>${maven.compiler.source}</source>
                     <target>${maven.compiler.target}</target>
                     <compilerVersion>${maven.compiler.source}</compilerVersion>
+                    <!-- jdk8 升级到 jdk11 -->
+                    <compilerArgs>
+                        <arg>--add-exports=java.base/sun.security.pkcs=ALL-UNNAMED</arg>
+                        <arg>--add-exports=java.base/sun.nio.ch=ALL-UNNAMED</arg>
+                    </compilerArgs>
                     <showDeprecation>true</showDeprecation>
                     <showWarnings>true</showWarnings>
                 </configuration>
